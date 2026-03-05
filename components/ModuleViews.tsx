@@ -11600,7 +11600,7 @@ export const TasksView: React.FC = () => {
   // View type state with localStorage persistence
   const [viewType, setViewType] = useState<TaskViewType>(() => {
     const saved = localStorage.getItem('tawfeeq_tasks_view_type');
-    return (saved as TaskViewType) || 'quadrant';
+    return (saved as TaskViewType) || 'kanban';
   });
 
   // Persist view type
@@ -12652,21 +12652,34 @@ export const TasksView: React.FC = () => {
                 </span>
               )}
             </div>
-            {(task.links?.length || task.subtasks?.length || task.notes) && (
+            {(task.links?.length || task.notes) && (
               <div className="flex items-center gap-3 mt-2 text-xs text-gray-400 dark:text-dark-muted">
                 {task.links && task.links.length > 0 && <span className="flex items-center gap-1"><Link2 size={12} /> {task.links.length}</span>}
-                {task.subtasks && task.subtasks.length > 0 && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setSubtasksOpen(o => !o); }}
-                    className="flex items-center gap-1 text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-gray-300 transition-colors font-medium"
-                  >
-                    <CheckSquare size={12} />
-                    {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length} subtasks
-                    {subtasksOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                  </button>
-                )}
                 {task.notes && <span className="flex items-center gap-1"><FileText size={12} /></span>}
               </div>
+            )}
+            {task.subtasks && task.subtasks.length > 0 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setSubtasksOpen(o => !o); }}
+                className={`mt-2 w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
+                  subtasksOpen
+                    ? 'bg-gray-100 dark:bg-dark-hover border-gray-300 dark:border-dark-border text-gray-700 dark:text-dark-text'
+                    : 'bg-gray-50 dark:bg-dark-elevated border-gray-200 dark:border-dark-border text-gray-600 dark:text-dark-muted hover:bg-gray-100 dark:hover:bg-dark-hover hover:text-gray-700 dark:hover:text-dark-text'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <CheckSquare size={14} />
+                  Subtasks
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+                    task.subtasks.filter(s => s.completed).length === task.subtasks.length
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                      : 'bg-gray-200 dark:bg-dark-border text-gray-600 dark:text-dark-muted'
+                  }`}>
+                    {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}
+                  </span>
+                </span>
+                {subtasksOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
             )}
           </div>
         </div>
