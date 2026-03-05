@@ -13142,15 +13142,15 @@ export const TasksView: React.FC = () => {
       {/* Kanban View */}
       {viewType === 'kanban' && (
         <div className="flex gap-4 overflow-x-auto pb-4">
-          {/* To Do Column */}
-          <div className="flex-shrink-0 w-80 bg-gray-100 dark:bg-dark-hover rounded-xl">
-            <div className="px-4 py-3 border-b border-gray-200 dark:border-dark-border">
+          {/* To Do Column — Blue */}
+          <div className="flex-shrink-0 w-80 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-900/30">
+            <div className="px-4 py-3 border-b border-blue-200 dark:border-blue-800/50">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-gray-700 dark:text-dark-text flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-gray-400" />
+                <h3 className="font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-blue-500" />
                   To Do
                 </h3>
-                <span className="text-sm text-gray-500 dark:text-dark-muted bg-white dark:bg-dark-card px-2 py-0.5 rounded-full">
+                <span className="text-sm text-blue-600 dark:text-blue-400 bg-white dark:bg-dark-card px-2 py-0.5 rounded-full font-medium">
                   {filteredTasks.filter(t => !t.completed && (!t.status || t.status === 'todo')).length}
                 </span>
               </div>
@@ -13160,7 +13160,7 @@ export const TasksView: React.FC = () => {
                 <div
                   key={task.id}
                   onClick={() => openTaskDetail(task)}
-                  className={`p-4 bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-dark-border cursor-pointer hover:shadow-md transition-all ${task.priority === 'high' ? 'border-l-4 border-l-gray-800 dark:border-l-gray-200' : task.priority === 'medium' ? 'border-l-4 border-l-gray-400' : 'border-l-4 border-l-gray-200 dark:border-l-gray-600'}`}
+                  className="p-4 bg-white dark:bg-dark-card rounded-lg border border-blue-200 dark:border-blue-800/50 border-l-4 border-l-blue-500 cursor-pointer hover:shadow-md transition-all"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-medium text-gray-800 dark:text-dark-text text-sm">{task.title}</p>
@@ -13172,7 +13172,7 @@ export const TasksView: React.FC = () => {
                       {new Date(task.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                     </span>
                     {task.subtasks && task.subtasks.length > 0 && (
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1 text-blue-500">
                         <CheckSquare size={12} />
                         {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}
                       </span>
@@ -13184,23 +13184,26 @@ export const TasksView: React.FC = () => {
                       {task.clientName}
                     </div>
                   )}
+                  {task.priority === 'high' && (
+                    <span className="mt-2 inline-block text-xs px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium">High</span>
+                  )}
                 </div>
               ))}
               {filteredTasks.filter(t => !t.completed && (!t.status || t.status === 'todo')).length === 0 && (
-                <p className="text-center text-sm text-gray-400 dark:text-dark-muted py-8">No tasks</p>
+                <p className="text-center text-sm text-blue-400 dark:text-blue-500 py-8">No tasks</p>
               )}
             </div>
           </div>
 
-          {/* In Progress Column */}
-          <div className="flex-shrink-0 w-80 bg-gray-100 dark:bg-dark-elevated rounded-xl">
-            <div className="px-4 py-3 border-b border-gray-200 dark:border-dark-border">
+          {/* In Progress Column — Amber */}
+          <div className="flex-shrink-0 w-80 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-900/30">
+            <div className="px-4 py-3 border-b border-amber-200 dark:border-amber-800/50">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-gray-500" />
+                <h3 className="font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-amber-500" />
                   In Progress
                 </h3>
-                <span className="text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-dark-card px-2 py-0.5 rounded-full">
+                <span className="text-sm text-amber-600 dark:text-amber-400 bg-white dark:bg-dark-card px-2 py-0.5 rounded-full font-medium">
                   {filteredTasks.filter(t => !t.completed && t.status === 'in_progress').length}
                 </span>
               </div>
@@ -13210,7 +13213,7 @@ export const TasksView: React.FC = () => {
                 <div
                   key={task.id}
                   onClick={() => openTaskDetail(task)}
-                  className={`p-4 bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-dark-border cursor-pointer hover:shadow-md transition-all ${task.priority === 'high' ? 'border-l-4 border-l-gray-800 dark:border-l-gray-200' : task.priority === 'medium' ? 'border-l-4 border-l-gray-400' : 'border-l-4 border-l-gray-200 dark:border-l-gray-600'}`}
+                  className="p-4 bg-white dark:bg-dark-card rounded-lg border border-amber-200 dark:border-amber-800/50 border-l-4 border-l-amber-500 cursor-pointer hover:shadow-md transition-all"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-medium text-gray-800 dark:text-dark-text text-sm">{task.title}</p>
@@ -13222,7 +13225,7 @@ export const TasksView: React.FC = () => {
                       {new Date(task.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                     </span>
                     {task.subtasks && task.subtasks.length > 0 && (
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1 text-amber-500">
                         <CheckSquare size={12} />
                         {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}
                       </span>
@@ -13234,23 +13237,26 @@ export const TasksView: React.FC = () => {
                       {task.clientName}
                     </div>
                   )}
+                  {task.priority === 'high' && (
+                    <span className="mt-2 inline-block text-xs px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium">High</span>
+                  )}
                 </div>
               ))}
               {filteredTasks.filter(t => !t.completed && t.status === 'in_progress').length === 0 && (
-                <p className="text-center text-sm text-gray-400 dark:text-dark-muted py-8">No tasks</p>
+                <p className="text-center text-sm text-amber-400 dark:text-amber-500 py-8">No tasks</p>
               )}
             </div>
           </div>
 
-          {/* Review Column */}
-          <div className="flex-shrink-0 w-80 bg-gray-50 dark:bg-dark-hover rounded-xl">
-            <div className="px-4 py-3 border-b border-gray-200 dark:border-dark-border">
+          {/* Review Column — Purple */}
+          <div className="flex-shrink-0 w-80 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-100 dark:border-purple-900/30">
+            <div className="px-4 py-3 border-b border-purple-200 dark:border-purple-800/50">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-gray-400" />
+                <h3 className="font-semibold text-purple-700 dark:text-purple-400 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-purple-500" />
                   Review
                 </h3>
-                <span className="text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-dark-card px-2 py-0.5 rounded-full">
+                <span className="text-sm text-purple-600 dark:text-purple-400 bg-white dark:bg-dark-card px-2 py-0.5 rounded-full font-medium">
                   {filteredTasks.filter(t => !t.completed && t.status === 'review').length}
                 </span>
               </div>
@@ -13260,7 +13266,7 @@ export const TasksView: React.FC = () => {
                 <div
                   key={task.id}
                   onClick={() => openTaskDetail(task)}
-                  className={`p-4 bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-dark-border cursor-pointer hover:shadow-md transition-all ${task.priority === 'high' ? 'border-l-4 border-l-gray-800 dark:border-l-gray-200' : task.priority === 'medium' ? 'border-l-4 border-l-gray-400' : 'border-l-4 border-l-gray-200 dark:border-l-gray-600'}`}
+                  className="p-4 bg-white dark:bg-dark-card rounded-lg border border-purple-200 dark:border-purple-800/50 border-l-4 border-l-purple-500 cursor-pointer hover:shadow-md transition-all"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-medium text-gray-800 dark:text-dark-text text-sm">{task.title}</p>
@@ -13272,7 +13278,7 @@ export const TasksView: React.FC = () => {
                       {new Date(task.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                     </span>
                     {task.subtasks && task.subtasks.length > 0 && (
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1 text-purple-500">
                         <CheckSquare size={12} />
                         {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}
                       </span>
@@ -13284,23 +13290,26 @@ export const TasksView: React.FC = () => {
                       {task.clientName}
                     </div>
                   )}
+                  {task.priority === 'high' && (
+                    <span className="mt-2 inline-block text-xs px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium">High</span>
+                  )}
                 </div>
               ))}
               {filteredTasks.filter(t => !t.completed && t.status === 'review').length === 0 && (
-                <p className="text-center text-sm text-gray-400 dark:text-dark-muted py-8">No tasks</p>
+                <p className="text-center text-sm text-purple-400 dark:text-purple-500 py-8">No tasks</p>
               )}
             </div>
           </div>
 
-          {/* Done Column */}
-          <div className="flex-shrink-0 w-80 bg-green-50 dark:bg-green-900/20 rounded-xl">
-            <div className="px-4 py-3 border-b border-green-200 dark:border-green-800">
+          {/* Done Column — Green */}
+          <div className="flex-shrink-0 w-80 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-100 dark:border-green-900/30">
+            <div className="px-4 py-3 border-b border-green-200 dark:border-green-800/50">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-green-700 dark:text-green-400 flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-green-500" />
                   Done
                 </h3>
-                <span className="text-sm text-green-600 dark:text-green-400 bg-white dark:bg-dark-card px-2 py-0.5 rounded-full">
+                <span className="text-sm text-green-600 dark:text-green-400 bg-white dark:bg-dark-card px-2 py-0.5 rounded-full font-medium">
                   {filteredTasks.filter(t => t.completed || t.status === 'done').length}
                 </span>
               </div>
@@ -13310,7 +13319,7 @@ export const TasksView: React.FC = () => {
                 <div
                   key={task.id}
                   onClick={() => openTaskDetail(task)}
-                  className="p-4 bg-white dark:bg-dark-card rounded-lg border border-green-200 dark:border-green-800 cursor-pointer hover:shadow-md transition-all opacity-75"
+                  className="p-4 bg-white dark:bg-dark-card rounded-lg border border-green-200 dark:border-green-800/50 border-l-4 border-l-green-500 cursor-pointer hover:shadow-md transition-all opacity-75"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-medium text-gray-500 dark:text-dark-muted text-sm line-through">{task.title}</p>
@@ -13325,7 +13334,7 @@ export const TasksView: React.FC = () => {
                 </div>
               ))}
               {filteredTasks.filter(t => t.completed || t.status === 'done').length === 0 && (
-                <p className="text-center text-sm text-gray-400 dark:text-dark-muted py-8">No completed tasks</p>
+                <p className="text-center text-sm text-green-400 dark:text-green-500 py-8">No completed tasks</p>
               )}
             </div>
           </div>
