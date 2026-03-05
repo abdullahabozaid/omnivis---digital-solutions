@@ -280,12 +280,20 @@ export const ClientsView: React.FC = () => {
 
   const handleDeleteClient = () => {
     if (!clientToDelete) return;
-    setClients(clients.filter((c: LocalClient) => c.id !== clientToDelete.id));
+    const deletedClient = clientToDelete;
+    const clientsBeforeDelete = [...clients];
+    setClients(clients.filter((c: LocalClient) => c.id !== deletedClient.id));
     setShowDeleteConfirm(false);
     setClientToDelete(null);
     setShowEditClient(false);
     setEditingClient(null);
-    showToast('success', 'Client deleted successfully');
+    showToast('success', `${deletedClient.name} deleted`, {
+      action: {
+        label: 'Undo',
+        onClick: () => setClients(clientsBeforeDelete),
+      },
+      duration: 5000,
+    });
   };
 
   const confirmDeleteClient = (client: LocalClient) => {
@@ -1366,7 +1374,7 @@ export const CrmView: React.FC = () => {
   // Inline probability editing
   const [editingProbabilityId, setEditingProbabilityId] = useState<string | null>(null);
   const [editingProbabilityValue, setEditingProbabilityValue] = useState<number>(0);
-  const [outcomeFilter, setOutcomeFilter] = useState<'all' | 'open' | 'won' | 'lost'>('all');
+  const [outcomeFilter, setOutcomeFilter] = useState<'all' | 'open' | 'won' | 'lost'>('open');
 
   // Saved Views
   const [savedViews, setSavedViews] = useState<CrmSavedView[]>(() => {
@@ -2290,6 +2298,27 @@ export const CrmView: React.FC = () => {
               </div>
             </div>
             <div className="p-3 space-y-3 min-h-[300px]">
+              {getFilteredStageContacts(stage.id).length === 0 && (
+                <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-center py-8">
+                  {hasActiveFilters() ? (
+                    <>
+                      <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-dark-elevated flex items-center justify-center mb-3">
+                        <Search size={18} className="text-gray-400 dark:text-dark-muted" />
+                      </div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-dark-muted">No contacts match</p>
+                      <p className="text-xs text-gray-400 dark:text-dark-muted mt-1">your current filters</p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-dark-elevated flex items-center justify-center mb-3">
+                        <Users size={18} className="text-gray-400 dark:text-dark-muted" />
+                      </div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-dark-muted">No contacts yet</p>
+                      <p className="text-xs text-gray-400 dark:text-dark-muted mt-1">Drag contacts here</p>
+                    </>
+                  )}
+                </div>
+              )}
               {getFilteredStageContacts(stage.id).map((contact) => (
                 <div
                   key={contact.id}
@@ -13184,9 +13213,11 @@ export const TasksView: React.FC = () => {
                       {task.clientName}
                     </div>
                   )}
-                  {task.priority === 'high' && (
-                    <span className="mt-2 inline-block text-xs px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium">High</span>
-                  )}
+                  <span className={`mt-2 inline-block text-xs px-1.5 py-0.5 rounded font-medium ${
+                    task.priority === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' :
+                    task.priority === 'medium' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' :
+                    'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                  }`}>{task.priority}</span>
                 </div>
               ))}
               {filteredTasks.filter(t => !t.completed && (!t.status || t.status === 'todo')).length === 0 && (
@@ -13237,9 +13268,11 @@ export const TasksView: React.FC = () => {
                       {task.clientName}
                     </div>
                   )}
-                  {task.priority === 'high' && (
-                    <span className="mt-2 inline-block text-xs px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium">High</span>
-                  )}
+                  <span className={`mt-2 inline-block text-xs px-1.5 py-0.5 rounded font-medium ${
+                    task.priority === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' :
+                    task.priority === 'medium' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' :
+                    'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                  }`}>{task.priority}</span>
                 </div>
               ))}
               {filteredTasks.filter(t => !t.completed && t.status === 'in_progress').length === 0 && (
@@ -13290,9 +13323,11 @@ export const TasksView: React.FC = () => {
                       {task.clientName}
                     </div>
                   )}
-                  {task.priority === 'high' && (
-                    <span className="mt-2 inline-block text-xs px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium">High</span>
-                  )}
+                  <span className={`mt-2 inline-block text-xs px-1.5 py-0.5 rounded font-medium ${
+                    task.priority === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' :
+                    task.priority === 'medium' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' :
+                    'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                  }`}>{task.priority}</span>
                 </div>
               ))}
               {filteredTasks.filter(t => !t.completed && t.status === 'review').length === 0 && (
@@ -19178,7 +19213,7 @@ export const AnalyticsView: React.FC = () => {
               icon={<CheckSquare size={20} className="text-green-600 dark:text-green-400" />}
             />
             <StatCard
-              label="Retention Rate"
+              label="Active Client Rate"
               value={`${Math.round(clientAnalytics.retentionRate)}%`}
               subValue="Active + Paused clients"
               icon={<TrendingUp size={20} className="text-gray-600 dark:text-gray-400 dark:text-blue-400" />}

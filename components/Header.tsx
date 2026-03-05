@@ -329,7 +329,10 @@ const Header: React.FC<HeaderProps> = ({ title, onOpenCommandPalette, onNavigate
 
               {activities.length > 0 && (
                 <div className="p-3 border-t border-gray-100 dark:border-dark-border">
-                  <button className="w-full text-center text-sm text-gold-600 dark:text-gold-400 hover:text-gold-700 dark:hover:text-gold-300 font-medium py-1">
+                  <button
+                    onClick={() => { setNotificationsOpen(false); onNavigate?.('overview'); }}
+                    className="w-full text-center text-sm text-gold-600 dark:text-gold-400 hover:text-gold-700 dark:hover:text-gold-300 font-medium py-1"
+                  >
                     View All Activity
                   </button>
                 </div>

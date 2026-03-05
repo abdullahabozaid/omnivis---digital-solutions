@@ -850,14 +850,14 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                   <div className="h-2 bg-gray-100 dark:bg-dark-elevated rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
-                        stat.progress >= 100 ? 'bg-gray-800 dark:bg-gray-200' : stat.progress >= 75 ? 'bg-gray-600 dark:bg-gray-400' : stat.progress >= 50 ? 'bg-gray-500' : 'bg-gray-400 dark:bg-gray-500'
+                        stat.progress >= 100 ? 'bg-green-600 dark:bg-green-500' : stat.progress >= 75 ? 'bg-green-500 dark:bg-green-400' : stat.progress >= 40 ? 'bg-amber-500 dark:bg-amber-400' : 'bg-red-500 dark:bg-red-400'
                       }`}
                       style={{ width: `${Math.min(stat.progress, 100)}%` }}
                     />
                   </div>
                   <div className="flex justify-between items-center">
                     <span className={`text-xs font-semibold ${
-                      stat.progress >= 100 ? 'text-gray-800 dark:text-gray-200' : 'text-gray-500 dark:text-dark-muted'
+                      stat.progress >= 100 ? 'text-green-700 dark:text-green-400' : stat.progress >= 75 ? 'text-green-600 dark:text-green-400' : stat.progress >= 40 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'
                     }`}>
                       {Math.round(stat.progress)}% of goal
                     </span>
