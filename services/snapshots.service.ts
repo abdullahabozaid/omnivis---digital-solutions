@@ -100,7 +100,7 @@ class SnapshotsService extends BaseService<Snapshot> {
 
     return {
       data: {
-        ...snapshotResult.data,
+        ...(snapshotResult.data as any),
         logos: logosResult.data || [],
         colors: colorsResult.data || [],
         typography: typographyResult.data || undefined,
@@ -361,7 +361,7 @@ class SnapshotColorsService extends BaseService<SnapshotBrandColor> {
     }
 
     const updates = colorIds.map((id, index) =>
-      supabase.from('snapshot_brand_colors').update({ display_order: index }).eq('id', id)
+      (supabase.from('snapshot_brand_colors') as any).update({ display_order: index }).eq('id', id)
     );
 
     await Promise.all(updates);

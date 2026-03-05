@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, ExternalLink, Globe, X, GripVertical, Calendar, ChevronDown, ChevronUp, Settings, Trash2, Edit3, Users, PoundSterling, TrendingUp, Layout, FileText, Play, Image as ImageIcon, Check, Pencil, CheckSquare, Monitor, Palette, Copy, Search, ArrowLeft, ArrowRight, Link2, Youtube, Video, Phone, Mail, ChevronRight, ChevronLeft, MoreVertical, Pause, PlayCircle, AlertTriangle, Clock, Star, Briefcase, Download, Upload, User, Bell, Database, Trophy, XCircle, ThumbsDown, RotateCcw, Bookmark, Filter, Save, Layers, Type, Hash, List, ToggleLeft, Link, AtSign, Smartphone, CircleDollarSign, LayoutGrid, Columns, Table2, LayoutList, MessageSquare, Activity, Send, Repeat, Timer, StopCircle, PlayIcon, FolderKanban, GitBranch, Lock, Unlock, Square, CheckCheck, Zap, Eye, Shuffle, Percent, FlaskConical, Package, FolderOpen, MapPin, MousePointer, Circle, Maximize2, Minimize2 } from 'lucide-react';
-import { CrmContact, ContractType, Pipeline, PipelineStage, BrandGuidelines, UserSettings, DealOutcome, LossReason, LOSS_REASONS, CrmSavedView, CustomField, CustomFieldType, CustomFieldOption, Project, PROJECT_COLORS, Snapshot, SnapshotApplyOptions, SNAPSHOT_INDUSTRIES, SnapshotIndustry, SnapshotEmailVariant, EmailVariantRotation, SnapshotLogo, SnapshotBrandColor, SnapshotTypography, SnapshotBrandAsset, SnapshotBranding, SnapshotWebsitePage, SnapshotWebsiteTemplate, SnapshotEmailSequence, SnapshotForm, SnapshotAutomation, SnapshotPipeline, SnapshotCopyBlock, AutomationPlatform, FormPlatform, GradientStop } from '../types';
+import { Plus, ExternalLink, Globe, X, GripVertical, Calendar, ChevronDown, ChevronUp, Settings, Trash2, Edit3, Users, PoundSterling, TrendingUp, Layout, FileText, Play, Image as ImageIcon, Check, Pencil, CheckSquare, Monitor, Palette, Copy, Search, ArrowLeft, ArrowRight, Link2, Youtube, Video, Phone, Mail, ChevronRight, ChevronLeft, MoreVertical, Pause, PlayCircle, AlertTriangle, Clock, Star, Briefcase, Download, Upload, User, Bell, Database, Trophy, XCircle, ThumbsDown, RotateCcw, Bookmark, Filter, Save, Layers, Type, Hash, List, ToggleLeft, Link, AtSign, Smartphone, CircleDollarSign, LayoutGrid, Columns, Table2, LayoutList, MessageSquare, Activity, Send, Repeat, Timer, StopCircle, PlayIcon, FolderKanban, GitBranch, Lock, Unlock, Square, CheckCheck, Zap, Eye, Shuffle, Percent, FlaskConical, Package, FolderOpen, MapPin, MousePointer, Circle, Maximize2, Minimize2, CheckCircle, Heart, SlidersHorizontal, ArrowUpDown, Building2, History } from 'lucide-react';
+import { CrmContact, ContractType, Pipeline, PipelineStage, BrandGuidelines, UserSettings, DealOutcome, LossReason, LOSS_REASONS, CrmSavedView, CustomField, CustomFieldType, CustomFieldOption, Project, PROJECT_COLORS, Snapshot, SnapshotApplyOptions, SNAPSHOT_INDUSTRIES, SnapshotIndustry, SnapshotEmailVariant, EmailVariantRotation, SnapshotLogo, SnapshotBrandColor, SnapshotTypography, SnapshotBrandAsset, SnapshotBranding, SnapshotWebsitePage, SnapshotWebsiteTemplate, SnapshotEmailSequence, SnapshotForm, SnapshotAutomation, SnapshotPipeline, SnapshotCopyBlock, AutomationPlatform, FormPlatform, GradientStop, Lead, LeadIndustry, LeadStatus, LEAD_INDUSTRIES, LEAD_STATUSES, WebsiteRating, WebsiteCatalogItem, CatalogCompletionStatus, CatalogSortField, CatalogTask, CatalogPromptHistory, CatalogPreviewType, CatalogIndustryCategory, CatalogColorTheme, CatalogDesignStyle, CatalogPageCategory, CATALOG_INDUSTRY_CATEGORIES, CATALOG_COLOR_THEMES, CATALOG_DESIGN_STYLES } from '../types';
 import BrandGuidelinesEditor from './BrandGuidelinesEditor';
 import { useToast } from './Toast';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -33,6 +33,7 @@ export const ClientsView: React.FC = () => {
   const { showToast } = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<LocalClient | null>(null);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [openActionsMenu, setOpenActionsMenu] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const menuButtonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
@@ -58,6 +59,7 @@ export const ClientsView: React.FC = () => {
   }, [clients]);
   const [showAddClient, setShowAddClient] = useState(false);
   const [showEditClient, setShowEditClient] = useState(false);
+  const [clientValidationErrors, setClientValidationErrors] = useState<{ name?: string; company?: string }>({});
 
   // Close actions menu when clicking outside (but not when modals are open)
   useEffect(() => {
@@ -145,7 +147,7 @@ export const ClientsView: React.FC = () => {
   };
 
   const SortIcon = ({ field }: { field: SortField }) => (
-    <span className={`ml-1 inline-flex ${sortField === field ? 'text-gold-600' : 'text-gray-300'}`}>
+    <span className={`ml-1 inline-flex ${sortField === field ? 'text-gray-700 dark:text-gray-300' : 'text-gray-300'}`}>
       {sortField === field && sortDirection === 'desc' ? '↓' : '↑'}
     </span>
   );
@@ -196,10 +198,15 @@ export const ClientsView: React.FC = () => {
   };
 
   const handleBulkDelete = () => {
+    setShowBulkDeleteConfirm(true);
+  };
+
+  const confirmBulkDelete = () => {
     const count = selectedClientIds.size;
     setClients(clients.filter(c => !selectedClientIds.has(c.id)));
     showToast('success', `${count} clients deleted`);
     clearSelection();
+    setShowBulkDeleteConfirm(false);
   };
 
   const handleExportCSV = () => {
@@ -231,10 +238,19 @@ export const ClientsView: React.FC = () => {
   const yearlyRevenue = monthlyRevenue * 12;
 
   const handleAddClient = () => {
-    if (!newClient.name || !newClient.company) {
-      showToast('error', 'Please fill in client name and company');
+    const errors: { name?: string; company?: string } = {};
+    if (!newClient.name?.trim()) {
+      errors.name = 'Client name is required';
+    }
+    if (!newClient.company?.trim()) {
+      errors.company = 'Company name is required';
+    }
+    if (Object.keys(errors).length > 0) {
+      setClientValidationErrors(errors);
+      showToast('error', 'Please fill in all required fields');
       return;
     }
+    setClientValidationErrors({});
     const client: LocalClient = {
       id: generateId(),
       name: newClient.name || '',
@@ -299,9 +315,10 @@ export const ClientsView: React.FC = () => {
 
   const getStatusStyle = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400';
-      case 'paused': return 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400';
-      default: return 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400';
+      case 'active': return 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800';
+      case 'paused': return 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800';
+      case 'cancelled': return 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800';
+      default: return 'bg-gray-50 dark:bg-dark-elevated text-gray-500 dark:text-gray-500 border border-gray-200 dark:border-gray-700';
     }
   };
 
@@ -311,8 +328,8 @@ export const ClientsView: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white dark:bg-dark-card p-6 rounded-xl border border-gray-200 dark:border-dark-border">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-gold-50 dark:bg-gold-900/30 rounded-xl border border-gold-100 dark:border-gold-800">
-              <Users size={20} className="text-gold-600 dark:text-gold-400" />
+            <div className="p-3 bg-gray-100 dark:bg-dark-elevated rounded-xl border border-gray-200 dark:border-dark-border">
+              <Users size={20} className="text-gray-600 dark:text-gray-400" />
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-dark-muted">Total Clients</p>
@@ -322,8 +339,8 @@ export const ClientsView: React.FC = () => {
         </div>
         <div className="bg-white dark:bg-dark-card p-6 rounded-xl border border-gray-200 dark:border-dark-border">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-gold-50 dark:bg-gold-900/30 rounded-xl border border-gold-100 dark:border-gold-800">
-              <PoundSterling size={20} className="text-gold-600 dark:text-gold-400" />
+            <div className="p-3 bg-gray-100 dark:bg-dark-elevated rounded-xl border border-gray-200 dark:border-dark-border">
+              <PoundSterling size={20} className="text-gray-600 dark:text-gray-400" />
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-dark-muted">Monthly Revenue</p>
@@ -333,8 +350,8 @@ export const ClientsView: React.FC = () => {
         </div>
         <div className="bg-white dark:bg-dark-card p-6 rounded-xl border border-gray-200 dark:border-dark-border">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-gold-50 dark:bg-gold-900/30 rounded-xl border border-gold-100 dark:border-gold-800">
-              <TrendingUp size={20} className="text-gold-600 dark:text-gold-400" />
+            <div className="p-3 bg-gray-100 dark:bg-dark-elevated rounded-xl border border-gray-200 dark:border-dark-border">
+              <TrendingUp size={20} className="text-gray-600 dark:text-gray-400" />
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-dark-muted">Yearly Revenue</p>
@@ -347,7 +364,7 @@ export const ClientsView: React.FC = () => {
       <div className="flex justify-between items-center relative z-10">
         <p className="text-gray-500 dark:text-dark-muted">Manage your clients and their subscriptions.</p>
         <button
-          onClick={() => setShowAddClient(true)}
+          onClick={() => { setClientValidationErrors({}); setShowAddClient(true); }}
           className="flex items-center gap-2 bg-gold-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-gold-600 transition-colors relative z-10"
         >
           <Plus size={16} />
@@ -366,7 +383,7 @@ export const ClientsView: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search clients..."
-              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white dark:bg-dark-elevated dark:text-dark-text dark:placeholder-dark-muted"
+              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white dark:bg-dark-elevated dark:text-dark-text dark:placeholder-dark-muted"
             />
           </div>
 
@@ -411,8 +428,8 @@ export const ClientsView: React.FC = () => {
             onClick={() => { setStatusFilter('active'); setContractFilter('all'); }}
             className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
               statusFilter === 'active' && contractFilter === 'all'
-                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800'
-                : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-dark-muted hover:bg-gray-200 dark:hover:bg-dark-hover'
+                ? 'bg-gold-500 text-white border border-gray-800 dark:border-gray-200'
+                : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-dark-muted hover:bg-gray-200 dark:hover:bg-dark-hover border border-transparent'
             }`}
           >
             Active Clients
@@ -421,8 +438,8 @@ export const ClientsView: React.FC = () => {
             onClick={() => { setContractFilter('annual'); setStatusFilter('all'); }}
             className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
               contractFilter === 'annual' && statusFilter === 'all'
-                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
-                : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-dark-muted hover:bg-gray-200 dark:hover:bg-dark-hover'
+                ? 'bg-gold-500 text-white border border-gray-800 dark:border-gray-200'
+                : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-dark-muted hover:bg-gray-200 dark:hover:bg-dark-hover border border-transparent'
             }`}
           >
             Annual Contracts
@@ -431,8 +448,8 @@ export const ClientsView: React.FC = () => {
             onClick={() => { setStatusFilter('paused'); setContractFilter('all'); }}
             className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
               statusFilter === 'paused' && contractFilter === 'all'
-                ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800'
-                : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-dark-muted hover:bg-gray-200 dark:hover:bg-dark-hover'
+                ? 'bg-gold-500 text-white border border-gray-800 dark:border-gray-200'
+                : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-dark-muted hover:bg-gray-200 dark:hover:bg-dark-hover border border-transparent'
             }`}
           >
             Paused
@@ -447,14 +464,14 @@ export const ClientsView: React.FC = () => {
 
       {/* Bulk Action Bar */}
       {isSomeSelected && (
-        <div className="bg-gold-50 dark:bg-gold-900/20 border border-gold-200 dark:border-gold-800 rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-gray-100 dark:bg-dark-elevated border border-gray-200 dark:border-dark-border rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <span className="text-sm font-medium text-gold-800 dark:text-gold-300">
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
               {selectedClientIds.size} client{selectedClientIds.size !== 1 ? 's' : ''} selected
             </span>
             <button
               onClick={clearSelection}
-              className="text-sm text-gold-600 dark:text-gold-400 hover:text-gold-800 dark:hover:text-gold-300"
+              className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
             >
               Clear selection
             </button>
@@ -462,28 +479,28 @@ export const ClientsView: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={() => handleBulkStatusChange('active')}
-              className="px-3 py-2 text-sm font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 rounded-lg transition-colors flex items-center gap-2"
+              className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-dark-elevated hover:bg-gray-200 dark:hover:bg-dark-hover rounded-lg transition-colors flex items-center gap-2 border border-gray-200 dark:border-dark-border"
             >
               <PlayCircle size={16} />
               Set Active
             </button>
             <button
               onClick={() => handleBulkStatusChange('paused')}
-              className="px-3 py-2 text-sm font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50 rounded-lg transition-colors flex items-center gap-2"
+              className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-dark-elevated hover:bg-gray-200 dark:hover:bg-dark-hover rounded-lg transition-colors flex items-center gap-2 border border-gray-200 dark:border-dark-border"
             >
               <Pause size={16} />
               Set Paused
             </button>
             <button
               onClick={handleExportCSV}
-              className="px-3 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 rounded-lg transition-colors flex items-center gap-2"
+              className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-dark-elevated hover:bg-gray-200 dark:hover:bg-dark-hover rounded-lg transition-colors flex items-center gap-2 border border-gray-200 dark:border-dark-border"
             >
               <Download size={16} />
               Export CSV
             </button>
             <button
               onClick={handleBulkDelete}
-              className="px-3 py-2 text-sm font-medium text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 rounded-lg transition-colors flex items-center gap-2"
+              className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-dark-elevated hover:bg-gray-200 dark:hover:bg-dark-hover rounded-lg transition-colors flex items-center gap-2 border border-gray-200 dark:border-dark-border"
             >
               <Trash2 size={16} />
               Delete
@@ -501,7 +518,8 @@ export const ClientsView: React.FC = () => {
                   type="checkbox"
                   checked={isAllSelected}
                   onChange={toggleSelectAll}
-                  className="w-4 h-4 text-gold-600 border-gray-300 dark:border-dark-border rounded focus:ring-gold-500 cursor-pointer"
+                  aria-label="Select all clients"
+                  className="w-4 h-4 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-dark-border rounded focus:ring-gray-500 cursor-pointer"
                 />
               </th>
               <th
@@ -550,7 +568,7 @@ export const ClientsView: React.FC = () => {
                     </p>
                     {!hasActiveFilters && (
                       <button
-                        onClick={() => setShowAddClient(true)}
+                        onClick={() => { setClientValidationErrors({}); setShowAddClient(true); }}
                         className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-gold-500 text-white rounded-lg hover:bg-gold-600 transition-colors text-sm font-medium"
                       >
                         <Plus size={16} />
@@ -563,8 +581,8 @@ export const ClientsView: React.FC = () => {
             ) : filteredAndSortedClients.map((client) => (
               <tr
                 key={client.id}
-                className={`hover:bg-gold-50/30 dark:hover:bg-gold-900/10 transition-all duration-200 cursor-pointer group ${
-                  selectedClientIds.has(client.id) ? 'bg-gold-50/50 dark:bg-gold-900/20' : ''
+                className={`hover:bg-gray-50 dark:hover:bg-dark-elevated transition-all duration-200 cursor-pointer group ${
+                  selectedClientIds.has(client.id) ? 'bg-gray-100 dark:bg-dark-elevated' : ''
                 }`}
                 onClick={() => openEditModal(client)}
               >
@@ -573,13 +591,13 @@ export const ClientsView: React.FC = () => {
                     type="checkbox"
                     checked={selectedClientIds.has(client.id)}
                     onChange={() => toggleSelectClient(client.id)}
-                    className="w-4 h-4 text-gold-600 border-gray-300 dark:border-dark-border rounded focus:ring-gold-500 cursor-pointer"
+                    className="w-4 h-4 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-dark-border rounded focus:ring-gray-500 cursor-pointer"
                   />
                 </td>
                 <td className="px-6 py-5">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-gradient-to-br from-gold-100 to-gold-200 dark:from-gold-900/50 dark:to-gold-800/50 rounded-full flex items-center justify-center flex-shrink-0 border border-gold-200 dark:border-gold-700">
-                      <span className="text-gold-700 dark:text-gold-300 font-semibold text-sm">
+                    <div className="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-full flex items-center justify-center flex-shrink-0 border border-gray-200 dark:border-gray-600">
+                      <span className="text-gray-700 dark:text-gray-300 font-semibold text-sm">
                         {client.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                       </span>
                     </div>
@@ -608,7 +626,7 @@ export const ClientsView: React.FC = () => {
                     href={`https://${client.website}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-gold-600 dark:text-gold-400 hover:text-gold-700 dark:hover:text-gold-300 transition-colors"
+                    className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Globe size={14} />
@@ -626,25 +644,21 @@ export const ClientsView: React.FC = () => {
                   </div>
                 </td>
                 <td className="px-6 py-5">
-                  <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold ${
-                    client.contractType === 'annual'
-                      ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800'
-                      : 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
-                  }`}>
+                  <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-100 dark:bg-dark-elevated text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-dark-border">
                     {client.contractType === 'annual' ? 'Annual' : 'Monthly'}
                   </span>
                 </td>
                 <td className="px-6 py-5">
                   <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold capitalize ${
-                    client.status === 'active'
-                      ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800'
-                      : client.status === 'paused'
-                      ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800'
-                      : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 line-through'
+                    client.status === 'cancelled' ? 'line-through' : ''
+                  } ${
+                    client.status === 'active' ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800' :
+                    client.status === 'paused' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800' :
+                    'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800'
                   }`}>
                     <span className={`w-1.5 h-1.5 rounded-full mr-2 ${
                       client.status === 'active' ? 'bg-green-500' :
-                      client.status === 'paused' ? 'bg-amber-500' : 'bg-red-500'
+                      client.status === 'paused' ? 'bg-amber-500' : 'bg-red-400'
                     }`}></span>
                     {client.status === 'cancelled' && <X size={12} className="mr-1" />}
                     {client.status}
@@ -654,16 +668,18 @@ export const ClientsView: React.FC = () => {
                   <div className="flex items-center justify-end gap-1">
                     <button
                       onClick={(e) => { e.stopPropagation(); openEditModal(client); }}
-                      className="p-2 text-gray-400 dark:text-dark-muted hover:text-gold-600 dark:hover:text-gold-400 hover:bg-gold-50 dark:hover:bg-gold-900/20 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                      className="p-2 text-gray-400 dark:text-dark-muted hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                       title="Edit"
+                      aria-label={`Edit ${client.name}`}
                     >
                       <Pencil size={16} />
                     </button>
                     <a
                       href={`mailto:${client.email}`}
                       onClick={(e) => e.stopPropagation()}
-                      className="p-2 text-gray-400 dark:text-dark-muted hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                      className="p-2 text-gray-400 dark:text-dark-muted hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                       title="Email"
+                      aria-label={`Email ${client.name}`}
                     >
                       <Mail size={16} />
                     </a>
@@ -686,6 +702,7 @@ export const ClientsView: React.FC = () => {
                         }}
                         className="p-2 text-gray-400 dark:text-dark-muted hover:text-gray-600 dark:hover:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-elevated rounded-lg transition-colors"
                         title="More actions"
+                        aria-label={`More actions for ${client.name}`}
                       >
                         <MoreVertical size={16} />
                       </button>
@@ -719,6 +736,7 @@ export const ClientsView: React.FC = () => {
                 <button
                   onClick={() => setShowAddClient(false)}
                   className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  aria-label="Close modal"
                 >
                   <X size={20} />
                 </button>
@@ -729,25 +747,49 @@ export const ClientsView: React.FC = () => {
                 {/* Name & Company Section */}
                 <div className="px-6 py-6 border-b border-gray-100">
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="w-16 h-16 bg-gold-100 rounded-full flex items-center justify-center text-gold-600 font-bold text-xl">
+                    <div className="w-16 h-16 bg-gray-100 dark:bg-dark-elevated rounded-full flex items-center justify-center text-gray-600 dark:text-gray-400 font-bold text-xl">
                       {newClient.name ? newClient.name.charAt(0).toUpperCase() : '?'}
                     </div>
                     <div className="flex-1">
-                      <input
-                        type="text"
-                        value={newClient.name}
-                        onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
-                        className="w-full text-2xl font-bold border-none focus:outline-none focus:ring-0 placeholder-gray-300 text-gray-800"
-                        placeholder="Client name..."
-                        autoFocus
-                      />
-                      <input
-                        type="text"
-                        value={newClient.company}
-                        onChange={(e) => setNewClient({ ...newClient, company: e.target.value })}
-                        className="w-full text-lg border-none focus:outline-none focus:ring-0 placeholder-gray-300 text-gray-500 mt-1"
-                        placeholder="Company name..."
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={newClient.name}
+                          onChange={(e) => {
+                            setNewClient({ ...newClient, name: e.target.value });
+                            if (clientValidationErrors.name) {
+                              setClientValidationErrors(prev => ({ ...prev, name: undefined }));
+                            }
+                          }}
+                          className={`w-full text-2xl font-bold border-b-2 focus:outline-none focus:ring-0 placeholder-gray-300 text-gray-800 pb-1 ${
+                            clientValidationErrors.name ? 'border-red-500' : 'border-transparent focus:border-gold-400'
+                          }`}
+                          placeholder="Client name..."
+                          autoFocus
+                        />
+                        {clientValidationErrors.name && (
+                          <p className="text-xs text-red-500 mt-1">{clientValidationErrors.name}</p>
+                        )}
+                      </div>
+                      <div className="relative mt-2">
+                        <input
+                          type="text"
+                          value={newClient.company}
+                          onChange={(e) => {
+                            setNewClient({ ...newClient, company: e.target.value });
+                            if (clientValidationErrors.company) {
+                              setClientValidationErrors(prev => ({ ...prev, company: undefined }));
+                            }
+                          }}
+                          className={`w-full text-lg border-b-2 focus:outline-none focus:ring-0 placeholder-gray-300 text-gray-500 pb-1 ${
+                            clientValidationErrors.company ? 'border-red-500' : 'border-transparent focus:border-gold-400'
+                          }`}
+                          placeholder="Company name..."
+                        />
+                        {clientValidationErrors.company && (
+                          <p className="text-xs text-red-500 mt-1">{clientValidationErrors.company}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -768,7 +810,7 @@ export const ClientsView: React.FC = () => {
                         value={newClient.email}
                         onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
                         placeholder="email@company.com"
-                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
                       />
                     </div>
                     <div>
@@ -780,7 +822,7 @@ export const ClientsView: React.FC = () => {
                         value={newClient.website}
                         onChange={(e) => setNewClient({ ...newClient, website: e.target.value })}
                         placeholder="example.com"
-                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
                       />
                     </div>
                   </div>
@@ -803,7 +845,7 @@ export const ClientsView: React.FC = () => {
                           type="number"
                           value={newClient.payment}
                           onChange={(e) => setNewClient({ ...newClient, payment: Number(e.target.value) })}
-                          className="w-full pl-7 pr-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+                          className="w-full pl-7 pr-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
                         />
                       </div>
                     </div>
@@ -814,20 +856,20 @@ export const ClientsView: React.FC = () => {
                       <div className="flex gap-1">
                         <button
                           onClick={() => setNewClient({ ...newClient, contractType: 'monthly' })}
-                          className={`flex-1 px-3 py-2.5 text-xs font-medium rounded-lg transition-colors ${
+                          className={`flex-1 px-3 py-2.5 text-xs font-medium rounded-lg transition-colors border ${
                             newClient.contractType === 'monthly'
-                              ? 'bg-blue-500 text-white'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              ? 'bg-gray-100 dark:bg-dark-elevated text-gray-800 dark:text-gray-200 border-gold-500'
+                              : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-gray-400 border-transparent hover:bg-gray-200 dark:hover:bg-dark-hover'
                           }`}
                         >
                           Monthly
                         </button>
                         <button
                           onClick={() => setNewClient({ ...newClient, contractType: 'annual' })}
-                          className={`flex-1 px-3 py-2.5 text-xs font-medium rounded-lg transition-colors ${
+                          className={`flex-1 px-3 py-2.5 text-xs font-medium rounded-lg transition-colors border ${
                             newClient.contractType === 'annual'
-                              ? 'bg-green-500 text-white'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              ? 'bg-gray-100 dark:bg-dark-elevated text-gray-800 dark:text-gray-200 border-gold-500'
+                              : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-gray-400 border-transparent hover:bg-gray-200 dark:hover:bg-dark-hover'
                           }`}
                         >
                           Annual
@@ -853,10 +895,10 @@ export const ClientsView: React.FC = () => {
                           <button
                             key={s}
                             onClick={() => setNewClient({ ...newClient, status: s })}
-                            className={`flex-1 px-2 py-2.5 text-xs font-medium rounded-lg transition-colors capitalize ${
+                            className={`flex-1 px-2 py-2.5 text-xs font-medium rounded-lg transition-colors capitalize border ${
                               newClient.status === s
-                                ? s === 'active' ? 'bg-green-500 text-white' : s === 'paused' ? 'bg-yellow-500 text-white' : 'bg-red-500 text-white'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                ? 'bg-gray-100 dark:bg-dark-elevated text-gray-800 dark:text-gray-200 border-gold-500'
+                                : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-gray-400 border-transparent hover:bg-gray-200 dark:hover:bg-dark-hover'
                             }`}
                           >
                             {s}
@@ -871,7 +913,7 @@ export const ClientsView: React.FC = () => {
                       <select
                         value={newClient.template}
                         onChange={(e) => setNewClient({ ...newClient, template: e.target.value })}
-                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white"
                       >
                         {templates.map((t) => (
                           <option key={t} value={t}>{t}</option>
@@ -951,7 +993,7 @@ export const ClientsView: React.FC = () => {
                 {/* Name & Company Section */}
                 <div className="px-6 py-6 border-b border-gray-100">
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="w-16 h-16 bg-gold-100 rounded-full flex items-center justify-center text-gold-600 font-bold text-xl">
+                    <div className="w-16 h-16 bg-gray-100 dark:bg-dark-elevated rounded-full flex items-center justify-center text-gray-600 dark:text-gray-400 font-bold text-xl">
                       {editingClient.name ? editingClient.name.charAt(0).toUpperCase() : '?'}
                     </div>
                     <div className="flex-1">
@@ -975,7 +1017,7 @@ export const ClientsView: React.FC = () => {
                   <div className="flex items-center gap-2 mt-4">
                     <a
                       href={`mailto:${editingClient.email}`}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                      className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-dark-elevated text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-dark-hover transition-colors text-sm font-medium"
                     >
                       <Mail size={16} />
                       Email
@@ -984,7 +1026,7 @@ export const ClientsView: React.FC = () => {
                       href={`https://${editingClient.website}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-4 py-2 bg-gold-50 text-gold-600 rounded-lg hover:bg-gold-100 transition-colors text-sm font-medium"
+                      className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-dark-elevated text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-dark-hover transition-colors text-sm font-medium"
                     >
                       <Globe size={16} />
                       Visit Site
@@ -1008,7 +1050,7 @@ export const ClientsView: React.FC = () => {
                         value={editingClient.email}
                         onChange={(e) => setEditingClient({ ...editingClient, email: e.target.value })}
                         placeholder="email@company.com"
-                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
                       />
                     </div>
                     <div>
@@ -1020,7 +1062,7 @@ export const ClientsView: React.FC = () => {
                         value={editingClient.website}
                         onChange={(e) => setEditingClient({ ...editingClient, website: e.target.value })}
                         placeholder="example.com"
-                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
                       />
                     </div>
                   </div>
@@ -1043,7 +1085,7 @@ export const ClientsView: React.FC = () => {
                           type="number"
                           value={editingClient.payment}
                           onChange={(e) => setEditingClient({ ...editingClient, payment: Number(e.target.value) })}
-                          className="w-full pl-7 pr-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+                          className="w-full pl-7 pr-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
                         />
                       </div>
                     </div>
@@ -1054,20 +1096,20 @@ export const ClientsView: React.FC = () => {
                       <div className="flex gap-1">
                         <button
                           onClick={() => setEditingClient({ ...editingClient, contractType: 'monthly' })}
-                          className={`flex-1 px-3 py-2.5 text-xs font-medium rounded-lg transition-colors ${
+                          className={`flex-1 px-3 py-2.5 text-xs font-medium rounded-lg transition-colors border ${
                             editingClient.contractType === 'monthly'
-                              ? 'bg-blue-500 text-white'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              ? 'bg-gray-100 dark:bg-dark-elevated text-gray-800 dark:text-gray-200 border-gold-500'
+                              : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-gray-400 border-transparent hover:bg-gray-200 dark:hover:bg-dark-hover'
                           }`}
                         >
                           Monthly
                         </button>
                         <button
                           onClick={() => setEditingClient({ ...editingClient, contractType: 'annual' })}
-                          className={`flex-1 px-3 py-2.5 text-xs font-medium rounded-lg transition-colors ${
+                          className={`flex-1 px-3 py-2.5 text-xs font-medium rounded-lg transition-colors border ${
                             editingClient.contractType === 'annual'
-                              ? 'bg-green-500 text-white'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              ? 'bg-gray-100 dark:bg-dark-elevated text-gray-800 dark:text-gray-200 border-gold-500'
+                              : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-gray-400 border-transparent hover:bg-gray-200 dark:hover:bg-dark-hover'
                           }`}
                         >
                           Annual
@@ -1093,10 +1135,10 @@ export const ClientsView: React.FC = () => {
                           <button
                             key={s}
                             onClick={() => setEditingClient({ ...editingClient, status: s })}
-                            className={`flex-1 px-2 py-2.5 text-xs font-medium rounded-lg transition-colors capitalize ${
+                            className={`flex-1 px-2 py-2.5 text-xs font-medium rounded-lg transition-colors capitalize border ${
                               editingClient.status === s
-                                ? s === 'active' ? 'bg-green-500 text-white' : s === 'paused' ? 'bg-yellow-500 text-white' : 'bg-red-500 text-white'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                ? 'bg-gray-100 dark:bg-dark-elevated text-gray-800 dark:text-gray-200 border-gold-500'
+                                : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-gray-400 border-transparent hover:bg-gray-200 dark:hover:bg-dark-hover'
                             }`}
                           >
                             {s}
@@ -1111,7 +1153,7 @@ export const ClientsView: React.FC = () => {
                       <select
                         value={editingClient.template}
                         onChange={(e) => setEditingClient({ ...editingClient, template: e.target.value })}
-                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white"
                       >
                         {templates.map((t) => (
                           <option key={t} value={t}>{t}</option>
@@ -1180,6 +1222,16 @@ export const ClientsView: React.FC = () => {
         onCancel={() => { setShowDeleteConfirm(false); setClientToDelete(null); }}
       />
 
+      {/* Bulk Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showBulkDeleteConfirm}
+        title="Delete Multiple Clients"
+        message={`Are you sure you want to delete ${selectedClientIds.size} selected clients? This action cannot be undone.`}
+        confirmLabel={`Delete ${selectedClientIds.size} Clients`}
+        onConfirm={confirmBulkDelete}
+        onCancel={() => setShowBulkDeleteConfirm(false)}
+      />
+
       {/* Actions Menu Portal */}
       {openActionsMenu && menuPosition && createPortal(
         <div
@@ -1207,7 +1259,7 @@ export const ClientsView: React.FC = () => {
                   onClick={(e) => { e.stopPropagation(); handleDuplicateClient(client); setOpenActionsMenu(null); setMenuPosition(null); }}
                   className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                 >
-                  <Copy size={14} className="text-purple-500" />
+                  <Copy size={14} className="text-gray-500" />
                   Duplicate Client
                 </button>
                 {client.status === 'active' ? (
@@ -1215,7 +1267,7 @@ export const ClientsView: React.FC = () => {
                     onClick={(e) => { e.stopPropagation(); handleStatusChange(client.id, 'paused'); setOpenActionsMenu(null); setMenuPosition(null); }}
                     className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                   >
-                    <Pause size={14} className="text-amber-500" />
+                    <Pause size={14} className="text-gray-500" />
                     Pause Client
                   </button>
                 ) : client.status === 'paused' ? (
@@ -1223,7 +1275,7 @@ export const ClientsView: React.FC = () => {
                     onClick={(e) => { e.stopPropagation(); handleStatusChange(client.id, 'active'); setOpenActionsMenu(null); setMenuPosition(null); }}
                     className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                   >
-                    <PlayCircle size={14} className="text-green-500" />
+                    <PlayCircle size={14} className="text-gray-500" />
                     Activate Client
                   </button>
                 ) : null}
@@ -1232,7 +1284,7 @@ export const ClientsView: React.FC = () => {
                   onClick={(e) => { e.stopPropagation(); setOpenActionsMenu(null); setMenuPosition(null); }}
                   className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                 >
-                  <Mail size={14} className="text-blue-500" />
+                  <Mail size={14} className="text-gray-500" />
                   Send Email
                 </a>
                 <div className="border-t border-gray-100">
@@ -1310,6 +1362,10 @@ export const CrmView: React.FC = () => {
   const [contactToMarkLost, setContactToMarkLost] = useState<CrmContact | null>(null);
   const [selectedLossReason, setSelectedLossReason] = useState<LossReason | ''>('');
   const [lossNotes, setLossNotes] = useState('');
+
+  // Inline probability editing
+  const [editingProbabilityId, setEditingProbabilityId] = useState<string | null>(null);
+  const [editingProbabilityValue, setEditingProbabilityValue] = useState<number>(0);
   const [outcomeFilter, setOutcomeFilter] = useState<'all' | 'open' | 'won' | 'lost'>('all');
 
   // Saved Views
@@ -1346,6 +1402,7 @@ export const CrmView: React.FC = () => {
     tagIds: [],
     customFields: {},
   });
+  const [contactErrors, setContactErrors] = useState<{ name?: string; company?: string }>({});
 
   const handleDragStart = (e: React.DragEvent, contactId: string) => {
     setDraggedContact(contactId);
@@ -1435,7 +1492,14 @@ export const CrmView: React.FC = () => {
   };
 
   const handleAddContact = () => {
-    if (!newContact.name || !newContact.company) return;
+    const errors: { name?: string; company?: string } = {};
+    if (!newContact.name?.trim()) errors.name = 'Contact name is required';
+    if (!newContact.company?.trim()) errors.company = 'Company name is required';
+    if (Object.keys(errors).length > 0) {
+      setContactErrors(errors);
+      return;
+    }
+    setContactErrors({});
     const selectedStage = activePipeline.stages.find(s => s.id === newContact.stageId);
     const contact: CrmContact = {
       id: generateId(),
@@ -1503,6 +1567,20 @@ export const CrmView: React.FC = () => {
     setShowEditContact(false);
     setEditingContact(null);
     showToast('success', 'Contact updated successfully');
+  };
+
+  const handleInlineProbabilityUpdate = (contactId: string, newProbability: number) => {
+    setPipelines(pipelines.map(pipeline => {
+      if (pipeline.id === activePipelineId) {
+        return {
+          ...pipeline,
+          contacts: pipeline.contacts.map(c => c.id === contactId ? { ...c, probability: newProbability } : c)
+        };
+      }
+      return pipeline;
+    }));
+    setEditingProbabilityId(null);
+    showToast('success', 'Probability updated');
   };
 
   const handleDeleteContact = () => {
@@ -1870,7 +1948,7 @@ export const CrmView: React.FC = () => {
                   <button
                     key={pipeline.id}
                     onClick={() => { setActivePipelineId(pipeline.id); setShowPipelineDropdown(false); }}
-                    className={`w-full px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-dark-hover ${pipeline.id === activePipelineId ? 'bg-gold-50 dark:bg-gold-900/20 text-gold-700 dark:text-gold-400' : 'text-gray-700 dark:text-dark-text'}`}
+                    className={`w-full px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-dark-hover ${pipeline.id === activePipelineId ? 'bg-gray-100 dark:bg-dark-elevated text-gray-800 dark:text-gray-200' : 'text-gray-700 dark:text-dark-text'}`}
                   >
                     {pipeline.name}
                     <span className="text-gray-400 dark:text-dark-muted ml-2">({pipeline.contacts.length})</span>
@@ -1879,7 +1957,7 @@ export const CrmView: React.FC = () => {
                 <div className="border-t border-gray-100 dark:border-dark-border">
                   <button
                     onClick={() => { setShowAddPipeline(true); setShowPipelineDropdown(false); }}
-                    className="w-full px-4 py-3 text-left text-sm text-gold-600 dark:text-gold-400 hover:bg-gold-50 dark:hover:bg-gold-900/20 flex items-center gap-2"
+                    className="w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-dark-hover flex items-center gap-2"
                   >
                     <Plus size={14} /> New Pipeline
                   </button>
@@ -1894,7 +1972,7 @@ export const CrmView: React.FC = () => {
               onClick={() => setShowViewsDropdown(!showViewsDropdown)}
               className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                 activeViewId
-                  ? 'bg-gold-100 dark:bg-gold-900/30 text-gold-700 dark:text-gold-400 border border-gold-200 dark:border-gold-800'
+                  ? 'bg-gold-500 text-white border border-gray-800 dark:border-gray-200'
                   : 'bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border text-gray-600 dark:text-dark-muted hover:bg-gray-50 dark:hover:bg-dark-hover'
               }`}
             >
@@ -1913,14 +1991,14 @@ export const CrmView: React.FC = () => {
                       <div
                         key={view.id}
                         className={`flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-dark-hover group ${
-                          activeViewId === view.id ? 'bg-gold-50 dark:bg-gold-900/20' : ''
+                          activeViewId === view.id ? 'bg-gray-100 dark:bg-dark-elevated' : ''
                         }`}
                       >
                         <button
                           onClick={() => applyView(view)}
                           className="flex-1 text-left"
                         >
-                          <p className={`text-sm font-medium ${activeViewId === view.id ? 'text-gold-700 dark:text-gold-400' : 'text-gray-700 dark:text-dark-text'}`}>
+                          <p className={`text-sm font-medium ${activeViewId === view.id ? 'text-gray-800 dark:text-dark-text' : 'text-gray-700 dark:text-dark-text'}`}>
                             {view.name}
                           </p>
                           <p className="text-xs text-gray-400 dark:text-dark-muted">
@@ -1931,7 +2009,7 @@ export const CrmView: React.FC = () => {
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); deleteView(view.id); }}
-                          className="p-1.5 text-gray-300 dark:text-dark-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="p-1.5 text-gray-300 dark:text-dark-muted hover:text-gray-600 dark:hover:text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -1949,7 +2027,7 @@ export const CrmView: React.FC = () => {
                   {hasActiveFilters() && (
                     <button
                       onClick={() => { setShowViewsDropdown(false); setShowSaveViewModal(true); }}
-                      className="w-full px-3 py-2 text-left text-sm text-gold-600 dark:text-gold-400 hover:bg-gold-50 dark:hover:bg-gold-900/20 rounded-lg flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg flex items-center gap-2"
                     >
                       <Save size={14} />
                       Save current filters as view
@@ -1996,7 +2074,7 @@ export const CrmView: React.FC = () => {
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); setActiveViewId(null); }}
             placeholder="Search contacts..."
-            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-card text-gray-800 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-muted focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-card text-gray-800 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-muted focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
           />
           {searchQuery && (
             <button
@@ -2054,7 +2132,7 @@ export const CrmView: React.FC = () => {
             <TrendingUp size={14} />
             Weighted Value
           </div>
-          <p className="text-2xl font-bold text-gold-600 dark:text-gold-400">
+          <p className="text-2xl font-bold text-gray-800 dark:text-dark-text">
             £{getTotalWeightedPipeline().toLocaleString()}
           </p>
           <p className="text-xs text-gray-400 dark:text-dark-muted mt-1">Probability-adjusted</p>
@@ -2064,7 +2142,7 @@ export const CrmView: React.FC = () => {
             <Calendar size={14} />
             Closing This Month
           </div>
-          <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+          <p className="text-2xl font-bold text-gray-800 dark:text-dark-text">
             £{activePipeline.contacts
               .filter(c => {
                 if (!c.expectedCloseDate || c.outcome === 'won' || c.outcome === 'lost') return false;
@@ -2085,21 +2163,21 @@ export const CrmView: React.FC = () => {
           </p>
         </div>
         <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-4">
-          <div className="flex items-center gap-2 text-green-600 dark:text-green-400 text-xs font-medium uppercase tracking-wider mb-1">
+          <div className="flex items-center gap-2 text-gray-500 dark:text-dark-muted text-xs font-medium uppercase tracking-wider mb-1">
             <Trophy size={14} />
             Won Deals
           </div>
-          <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+          <p className="text-2xl font-bold text-gray-800 dark:text-dark-text">
             £{activePipeline.contacts.filter(c => c.outcome === 'won').reduce((sum, c) => sum + c.value, 0).toLocaleString()}
           </p>
           <p className="text-xs text-gray-400 dark:text-dark-muted mt-1">{getOutcomeCounts().won} deals won</p>
         </div>
         <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-4">
-          <div className="flex items-center gap-2 text-red-500 dark:text-red-400 text-xs font-medium uppercase tracking-wider mb-1">
+          <div className="flex items-center gap-2 text-gray-500 dark:text-dark-muted text-xs font-medium uppercase tracking-wider mb-1">
             <XCircle size={14} />
             Lost Deals
           </div>
-          <p className="text-2xl font-bold text-red-500 dark:text-red-400">
+          <p className="text-2xl font-bold text-gray-800 dark:text-dark-text">
             £{activePipeline.contacts.filter(c => c.outcome === 'lost').reduce((sum, c) => sum + c.value, 0).toLocaleString()}
           </p>
           <p className="text-xs text-gray-400 dark:text-dark-muted mt-1">{getOutcomeCounts().lost} deals lost</p>
@@ -2109,7 +2187,7 @@ export const CrmView: React.FC = () => {
             <Briefcase size={14} />
             Win Rate
           </div>
-          <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+          <p className="text-2xl font-bold text-gray-800 dark:text-dark-text">
             {(() => {
               const won = getOutcomeCounts().won;
               const lost = getOutcomeCounts().lost;
@@ -2149,7 +2227,7 @@ export const CrmView: React.FC = () => {
             className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1 ${
               outcomeFilter === 'won'
                 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 shadow-sm'
-                : 'text-gray-500 dark:text-dark-muted hover:text-green-600 dark:hover:text-green-400'
+                : 'text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text'
             }`}
           >
             <Trophy size={12} /> Won ({getOutcomeCounts().won})
@@ -2158,8 +2236,8 @@ export const CrmView: React.FC = () => {
             onClick={() => setOutcomeFilter('lost')}
             className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1 ${
               outcomeFilter === 'lost'
-                ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 shadow-sm'
-                : 'text-gray-500 dark:text-dark-muted hover:text-red-600 dark:hover:text-red-400'
+                ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 shadow-sm'
+                : 'text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text'
             }`}
           >
             <XCircle size={12} /> Lost ({getOutcomeCounts().lost})
@@ -2169,15 +2247,15 @@ export const CrmView: React.FC = () => {
         {/* Legend */}
         <div className="flex items-center gap-6 text-xs text-gray-500 dark:text-dark-muted">
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-6 border-l-4 border-gold-400 bg-gold-50 dark:bg-gold-900/20 rounded-r"></div>
+            <div className="w-3 h-6 border-l-4 border-gray-800 dark:border-gray-200 bg-gray-100 dark:bg-dark-elevated rounded-r"></div>
             <span>High value (£10k+)</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <Trophy size={12} className="text-green-500" />
+            <Trophy size={12} className="text-gray-600 dark:text-gray-400" />
             <span>Won</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <XCircle size={12} className="text-red-500" />
+            <XCircle size={12} className="text-gray-600 dark:text-gray-400" />
             <span>Lost</span>
           </div>
         </div>
@@ -2206,7 +2284,7 @@ export const CrmView: React.FC = () => {
               <div className="flex items-center gap-3 mt-1">
                 <p className="text-sm text-gray-400 dark:text-dark-muted">£{getStageTotal(stage.id).toLocaleString()}</p>
                 <span className="text-xs text-gray-300 dark:text-dark-border">|</span>
-                <p className="text-sm text-gold-500 dark:text-gold-400 font-medium" title="Weighted value">
+                <p className="text-sm text-gray-600 dark:text-gray-400 font-medium" title="Weighted value">
                   £{Math.round(getStageWeightedTotal(stage.id)).toLocaleString()} weighted
                 </p>
               </div>
@@ -2220,11 +2298,11 @@ export const CrmView: React.FC = () => {
                   onClick={() => openEditModal(contact)}
                   className={`relative p-4 rounded-xl border transition-all duration-200 cursor-pointer group ${
                     contact.outcome === 'won'
-                      ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700'
+                      ? 'bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-800'
                       : contact.outcome === 'lost'
-                      ? 'bg-red-50/50 dark:bg-red-900/10 border-red-200 dark:border-red-800 opacity-75'
-                      : 'bg-white dark:bg-dark-elevated border-gray-200 dark:border-dark-border hover:border-gold-300 dark:hover:border-gold-600 hover:shadow-md cursor-grab active:cursor-grabbing'
-                  } ${contact.value >= 10000 && (!contact.outcome || contact.outcome === 'open') ? 'border-l-4 border-l-gold-400' : ''
+                      ? 'bg-red-50/30 dark:bg-red-900/10 border-red-200 dark:border-red-800 opacity-75'
+                      : 'bg-white dark:bg-dark-elevated border-gray-200 dark:border-dark-border hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-md cursor-grab active:cursor-grabbing'
+                  } ${contact.value >= 10000 && (!contact.outcome || contact.outcome === 'open') ? 'border-l-4 border-l-gray-800 dark:border-l-gray-200' : ''
                   } ${draggedContact === contact.id ? 'opacity-50 scale-95' : ''}`}
                 >
                   {/* Won/Lost/Converted indicator */}
@@ -2233,7 +2311,7 @@ export const CrmView: React.FC = () => {
                       <Trophy size={10} className="text-white" />
                     </div>
                   ) : contact.outcome === 'lost' ? (
-                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center" title={`Lost: ${contact.lossReason || 'No reason'}`}>
+                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-400 rounded-full flex items-center justify-center" title={`Lost: ${contact.lossReason || 'No reason'}`}>
                       <XCircle size={10} className="text-white" />
                     </div>
                   ) : contact.convertedToClientId ? (
@@ -2257,15 +2335,15 @@ export const CrmView: React.FC = () => {
                             : 'text-gray-800 dark:text-dark-text'
                         }`}>{contact.name}</p>
                         {contact.outcome === 'won' && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 rounded font-medium flex items-center gap-0.5">
+                          <span className="text-[10px] px-1.5 py-0.5 bg-green-500 text-white rounded font-medium flex items-center gap-0.5">
                             <Trophy size={8} /> Won
                           </span>
                         )}
                         {contact.outcome === 'lost' && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 rounded font-medium">Lost</span>
+                          <span className="text-[10px] px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded font-medium">Lost</span>
                         )}
                         {contact.convertedToClientId && (!contact.outcome || contact.outcome === 'open') && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 rounded font-medium">Client</span>
+                          <span className="text-[10px] px-1.5 py-0.5 bg-green-500 text-white rounded font-medium">Client</span>
                         )}
                       </div>
                       <p className="text-sm text-gray-500 dark:text-dark-muted truncate">{contact.company}</p>
@@ -2284,7 +2362,7 @@ export const CrmView: React.FC = () => {
                         <PoundSterling size={14} className={
                           contact.outcome === 'won' ? 'text-green-500' :
                           contact.outcome === 'lost' ? 'text-gray-400 dark:text-dark-muted' :
-                          'text-gold-500'
+                          'text-gray-500'
                         } />
                         <span className={`text-base font-bold ${
                           contact.outcome === 'won' ? 'text-green-600 dark:text-green-400' :
@@ -2293,21 +2371,40 @@ export const CrmView: React.FC = () => {
                         }`}>{contact.value.toLocaleString()}</span>
                       </div>
                       {contact.outcome !== 'won' && contact.outcome !== 'lost' && contact.probability !== undefined && (
-                        <span className={`text-xs px-2 py-0.5 rounded font-medium ${
-                          contact.probability >= 75 ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400' :
-                          contact.probability >= 50 ? 'bg-gold-100 dark:bg-gold-900/40 text-gold-700 dark:text-gold-400' :
-                          contact.probability >= 25 ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400' :
-                          'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-dark-muted'
-                        }`} title="Win probability">
-                          {contact.probability}%
-                        </span>
+                        editingProbabilityId === contact.id ? (
+                          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={editingProbabilityValue}
+                              onChange={(e) => setEditingProbabilityValue(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleInlineProbabilityUpdate(contact.id, editingProbabilityValue);
+                                if (e.key === 'Escape') setEditingProbabilityId(null);
+                              }}
+                              onBlur={() => handleInlineProbabilityUpdate(contact.id, editingProbabilityValue)}
+                              autoFocus
+                              className="w-12 text-xs px-1.5 py-0.5 rounded font-medium bg-white dark:bg-dark-card border border-gold-400 text-gray-800 dark:text-dark-text focus:outline-none focus:ring-1 focus:ring-gold-500"
+                            />
+                            <span className="text-xs text-gray-500">%</span>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingProbabilityId(contact.id);
+                              setEditingProbabilityValue(contact.probability || 0);
+                            }}
+                            className="text-xs px-2 py-0.5 rounded font-medium bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-dark-muted hover:bg-gold-100 dark:hover:bg-gold-900/30 hover:text-gold-700 dark:hover:text-gold-300 transition-colors cursor-pointer"
+                            title="Click to edit probability"
+                          >
+                            {contact.probability}%
+                          </button>
+                        )
                       )}
                     </div>
-                    <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                      contact.contractType === 'annual'
-                        ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-100 dark:border-green-800'
-                        : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800'
-                    }`}>
+                    <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-dark-border">
                       {contact.contractType === 'annual' ? 'Annual' : 'Monthly'}
                     </span>
                   </div>
@@ -2332,23 +2429,26 @@ export const CrmView: React.FC = () => {
                       <a
                         href={`tel:${contact.phone}`}
                         onClick={(e) => e.stopPropagation()}
-                        className="p-1.5 text-gray-400 dark:text-dark-muted hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+                        className="p-1.5 text-gray-400 dark:text-dark-muted hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-dark-elevated rounded-lg transition-colors"
                         title="Call"
+                        aria-label={`Call ${contact.name}`}
                       >
                         <Phone size={14} />
                       </a>
                       <a
                         href={`mailto:${contact.email}`}
                         onClick={(e) => e.stopPropagation()}
-                        className="p-1.5 text-gray-400 dark:text-dark-muted hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+                        className="p-1.5 text-gray-400 dark:text-dark-muted hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-dark-elevated rounded-lg transition-colors"
                         title="Email"
+                        aria-label={`Email ${contact.name}`}
                       >
                         <Mail size={14} />
                       </a>
                       <button
                         onClick={(e) => { e.stopPropagation(); openEditModal(contact); }}
-                        className="p-1.5 text-gray-400 dark:text-dark-muted hover:text-gold-600 hover:bg-gold-50 dark:hover:bg-gold-900/30 rounded-lg transition-colors"
+                        className="p-1.5 text-gray-400 dark:text-dark-muted hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-dark-elevated rounded-lg transition-colors"
                         title="Edit"
+                        aria-label={`Edit ${contact.name}`}
                       >
                         <Pencil size={14} />
                       </button>
@@ -2418,19 +2518,19 @@ export const CrmView: React.FC = () => {
                               type="text"
                               value={editingStage.label}
                               onChange={(e) => setEditingStage({ ...editingStage, label: e.target.value })}
-                              className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gold-400 focus:border-gold-400 outline-none"
+                              className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border outline-none"
                               autoFocus
                             />
                             <select
                               value={editingStage.color}
                               onChange={(e) => setEditingStage({ ...editingStage, color: e.target.value })}
-                              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gold-400 focus:border-gold-400 outline-none bg-white"
+                              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border outline-none bg-white"
                             >
                               {stageColors.map(c => (
                                 <option key={c.id} value={c.class}>{c.label}</option>
                               ))}
                             </select>
-                            <button onClick={handleUpdateStage} className="px-3 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition-colors">
+                            <button onClick={handleUpdateStage} className="px-3 py-2 bg-gray-600 dark:bg-gray-400 text-white dark:text-gray-800 rounded-lg text-sm font-medium hover:bg-gray-500 dark:hover:bg-gray-500 transition-colors">
                               Save
                             </button>
                             <button onClick={() => setEditingStage(null)} className="px-3 py-2 text-gray-500 hover:text-gray-700 text-sm font-medium">
@@ -2463,7 +2563,7 @@ export const CrmView: React.FC = () => {
                             </div>
                             <button
                               onClick={() => setEditingStage({ ...stage })}
-                              className="p-1.5 text-gray-400 hover:text-gold-600 hover:bg-gold-50 rounded transition-colors"
+                              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-dark-elevated rounded transition-colors"
                               title="Edit"
                             >
                               <Edit3 size={16} />
@@ -2499,7 +2599,7 @@ export const CrmView: React.FC = () => {
                           placeholder="e.g., Qualified, Demo, Closed Won"
                           value={newStageName}
                           onChange={(e) => setNewStageName(e.target.value)}
-                          className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gold-400 focus:border-gold-400 outline-none bg-white"
+                          className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border outline-none bg-white"
                         />
                       </div>
                       <div>
@@ -2574,8 +2674,8 @@ export const CrmView: React.FC = () => {
               <div className="flex-1 overflow-y-auto">
                 <div className="px-6 py-6">
                   <div className="flex items-center gap-4 mb-6">
-                    <div className="w-16 h-16 bg-gold-100 rounded-xl flex items-center justify-center">
-                      <TrendingUp size={28} className="text-gold-600" />
+                    <div className="w-16 h-16 bg-gray-100 dark:bg-dark-elevated rounded-xl flex items-center justify-center">
+                      <TrendingUp size={28} className="text-gray-600 dark:text-gray-400" />
                     </div>
                     <div className="flex-1">
                       <input
@@ -2590,9 +2690,9 @@ export const CrmView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-                    <h4 className="text-sm font-medium text-blue-800 mb-2">What you'll get:</h4>
-                    <ul className="text-sm text-blue-600 space-y-1.5">
+                  <div className="p-4 bg-gray-100 dark:bg-dark-elevated rounded-xl border border-gray-200 dark:border-dark-border">
+                    <h4 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">What you'll get:</h4>
+                    <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1.5">
                       <li className="flex items-center gap-2">
                         <Check size={14} /> Default stages (Lead, Contacted, Proposal, Negotiation, Closed)
                       </li>
@@ -2660,25 +2760,27 @@ export const CrmView: React.FC = () => {
                 {/* Name & Company Section */}
                 <div className="px-6 py-6 border-b border-gray-100">
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="w-16 h-16 bg-gold-100 rounded-full flex items-center justify-center text-gold-600 font-bold text-xl">
+                    <div className="w-16 h-16 bg-gray-100 dark:bg-dark-elevated rounded-full flex items-center justify-center text-gray-600 dark:text-gray-400 font-bold text-xl">
                       {newContact.name ? newContact.name.charAt(0).toUpperCase() : '?'}
                     </div>
                     <div className="flex-1">
                       <input
                         type="text"
                         value={newContact.name}
-                        onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
-                        className="w-full text-2xl font-bold border-none focus:outline-none focus:ring-0 placeholder-gray-300 text-gray-800"
+                        onChange={(e) => { setNewContact({ ...newContact, name: e.target.value }); setContactErrors({ ...contactErrors, name: undefined }); }}
+                        className={`w-full text-2xl font-bold border-none focus:outline-none focus:ring-0 placeholder-gray-300 ${contactErrors.name ? 'text-red-500' : 'text-gray-800 dark:text-dark-text'}`}
                         placeholder="Contact name..."
                         autoFocus
                       />
+                      {contactErrors.name && <p className="text-xs text-red-500 mt-1">{contactErrors.name}</p>}
                       <input
                         type="text"
                         value={newContact.company}
-                        onChange={(e) => setNewContact({ ...newContact, company: e.target.value })}
-                        className="w-full text-lg border-none focus:outline-none focus:ring-0 placeholder-gray-300 text-gray-500 mt-1"
+                        onChange={(e) => { setNewContact({ ...newContact, company: e.target.value }); setContactErrors({ ...contactErrors, company: undefined }); }}
+                        className={`w-full text-lg border-none focus:outline-none focus:ring-0 placeholder-gray-300 mt-1 ${contactErrors.company ? 'text-red-500' : 'text-gray-500 dark:text-dark-muted'}`}
                         placeholder="Company name..."
                       />
+                      {contactErrors.company && <p className="text-xs text-red-500 mt-1">{contactErrors.company}</p>}
                     </div>
                   </div>
                 </div>
@@ -2699,7 +2801,7 @@ export const CrmView: React.FC = () => {
                         value={newContact.email}
                         onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
                         placeholder="email@company.com"
-                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
                       />
                     </div>
                     <div>
@@ -2711,7 +2813,7 @@ export const CrmView: React.FC = () => {
                         value={newContact.phone}
                         onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
                         placeholder="07700 900000"
-                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
                       />
                     </div>
                   </div>
@@ -2734,7 +2836,7 @@ export const CrmView: React.FC = () => {
                           type="number"
                           value={newContact.value}
                           onChange={(e) => setNewContact({ ...newContact, value: Number(e.target.value) })}
-                          className="w-full pl-7 pr-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+                          className="w-full pl-7 pr-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
                         />
                       </div>
                     </div>
@@ -2752,7 +2854,7 @@ export const CrmView: React.FC = () => {
                             probability: newStage?.defaultProbability || newContact.probability
                           });
                         }}
-                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white"
                       >
                         {activePipeline.stages.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                       </select>
@@ -2766,7 +2868,7 @@ export const CrmView: React.FC = () => {
                           onClick={() => setNewContact({ ...newContact, contractType: 'monthly' })}
                           className={`flex-1 px-3 py-2.5 text-xs font-medium rounded-lg transition-colors ${
                             newContact.contractType === 'monthly'
-                              ? 'bg-blue-500 text-white'
+                              ? 'bg-gold-500 text-white'
                               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                           }`}
                         >
@@ -2776,7 +2878,7 @@ export const CrmView: React.FC = () => {
                           onClick={() => setNewContact({ ...newContact, contractType: 'annual' })}
                           className={`flex-1 px-3 py-2.5 text-xs font-medium rounded-lg transition-colors ${
                             newContact.contractType === 'annual'
-                              ? 'bg-green-500 text-white'
+                              ? 'bg-gray-600 dark:bg-gray-400 text-white dark:text-gray-800'
                               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                           }`}
                         >
@@ -2823,7 +2925,7 @@ export const CrmView: React.FC = () => {
                         type="date"
                         value={newContact.expectedCloseDate || ''}
                         onChange={(e) => setNewContact({ ...newContact, expectedCloseDate: e.target.value })}
-                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
                       />
                     </div>
                     <div>
@@ -2833,7 +2935,7 @@ export const CrmView: React.FC = () => {
                       <select
                         value={newContact.source || ''}
                         onChange={(e) => setNewContact({ ...newContact, source: e.target.value })}
-                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white"
                       >
                         <option value="">Select source...</option>
                         <option value="Website">Website</option>
@@ -2849,9 +2951,9 @@ export const CrmView: React.FC = () => {
                     </div>
                   </div>
                   {/* Weighted Value Display */}
-                  <div className="mt-4 p-3 bg-gold-50 rounded-lg flex items-center justify-between">
-                    <span className="text-sm text-gold-700">Weighted Value</span>
-                    <span className="text-lg font-bold text-gold-700">
+                  <div className="mt-4 p-3 bg-gray-100 dark:bg-dark-elevated rounded-lg flex items-center justify-between">
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Weighted Value</span>
+                    <span className="text-lg font-bold text-gray-700 dark:text-gray-300">
                       £{((newContact.value || 0) * ((newContact.probability || 10) / 100)).toLocaleString()}
                     </span>
                   </div>
@@ -2880,7 +2982,7 @@ export const CrmView: React.FC = () => {
                     onChange={(e) => setNewContact({ ...newContact, notes: e.target.value })}
                     placeholder="Add notes about this contact, deal details, next steps..."
                     rows={5}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 resize-none placeholder-gray-400"
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border resize-none placeholder-gray-400"
                   />
                 </div>
 
@@ -2946,7 +3048,7 @@ export const CrmView: React.FC = () => {
                 {/* Name & Company Section */}
                 <div className="px-6 py-6 border-b border-gray-100">
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="w-16 h-16 bg-gold-100 rounded-full flex items-center justify-center text-gold-600 font-bold text-xl">
+                    <div className="w-16 h-16 bg-gray-100 dark:bg-dark-elevated rounded-full flex items-center justify-center text-gray-600 dark:text-gray-400 font-bold text-xl">
                       {editingContact.name ? editingContact.name.charAt(0).toUpperCase() : '?'}
                     </div>
                     <div className="flex-1">
@@ -2970,14 +3072,14 @@ export const CrmView: React.FC = () => {
                   <div className="flex items-center gap-2 mt-4">
                     <a
                       href={`mailto:${editingContact.email}`}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                      className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-dark-elevated text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-dark-hover transition-colors text-sm font-medium"
                     >
                       <Mail size={16} />
                       Email
                     </a>
                     <a
                       href={`tel:${editingContact.phone}`}
-                      className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium"
+                      className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-dark-elevated text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-dark-hover transition-colors text-sm font-medium"
                     >
                       <Phone size={16} />
                       Call
@@ -3001,7 +3103,7 @@ export const CrmView: React.FC = () => {
                         value={editingContact.email}
                         onChange={(e) => setEditingContact({ ...editingContact, email: e.target.value })}
                         placeholder="email@company.com"
-                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
                       />
                     </div>
                     <div>
@@ -3013,7 +3115,7 @@ export const CrmView: React.FC = () => {
                         value={editingContact.phone}
                         onChange={(e) => setEditingContact({ ...editingContact, phone: e.target.value })}
                         placeholder="07700 900000"
-                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
                       />
                     </div>
                   </div>
@@ -3036,7 +3138,7 @@ export const CrmView: React.FC = () => {
                           type="number"
                           value={editingContact.value}
                           onChange={(e) => setEditingContact({ ...editingContact, value: Number(e.target.value) })}
-                          className="w-full pl-7 pr-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+                          className="w-full pl-7 pr-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
                         />
                       </div>
                     </div>
@@ -3054,7 +3156,7 @@ export const CrmView: React.FC = () => {
                             probability: newStage?.defaultProbability || editingContact.probability
                           });
                         }}
-                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white"
                       >
                         {activePipeline.stages.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                       </select>
@@ -3068,7 +3170,7 @@ export const CrmView: React.FC = () => {
                           onClick={() => setEditingContact({ ...editingContact, contractType: 'monthly' })}
                           className={`flex-1 px-3 py-2.5 text-xs font-medium rounded-lg transition-colors ${
                             editingContact.contractType === 'monthly'
-                              ? 'bg-blue-500 text-white'
+                              ? 'bg-gold-500 text-white'
                               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                           }`}
                         >
@@ -3078,7 +3180,7 @@ export const CrmView: React.FC = () => {
                           onClick={() => setEditingContact({ ...editingContact, contractType: 'annual' })}
                           className={`flex-1 px-3 py-2.5 text-xs font-medium rounded-lg transition-colors ${
                             editingContact.contractType === 'annual'
-                              ? 'bg-green-500 text-white'
+                              ? 'bg-gray-600 dark:bg-gray-400 text-white dark:text-gray-800'
                               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                           }`}
                         >
@@ -3125,7 +3227,7 @@ export const CrmView: React.FC = () => {
                         type="date"
                         value={editingContact.expectedCloseDate || ''}
                         onChange={(e) => setEditingContact({ ...editingContact, expectedCloseDate: e.target.value })}
-                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
                       />
                     </div>
                     <div>
@@ -3135,7 +3237,7 @@ export const CrmView: React.FC = () => {
                       <select
                         value={editingContact.source || ''}
                         onChange={(e) => setEditingContact({ ...editingContact, source: e.target.value })}
-                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white"
                       >
                         <option value="">Select source...</option>
                         <option value="Website">Website</option>
@@ -3151,9 +3253,9 @@ export const CrmView: React.FC = () => {
                     </div>
                   </div>
                   {/* Weighted Value Display */}
-                  <div className="mt-4 p-3 bg-gold-50 rounded-lg flex items-center justify-between">
-                    <span className="text-sm text-gold-700">Weighted Value</span>
-                    <span className="text-lg font-bold text-gold-700">
+                  <div className="mt-4 p-3 bg-gray-100 dark:bg-dark-elevated rounded-lg flex items-center justify-between">
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Weighted Value</span>
+                    <span className="text-lg font-bold text-gray-700 dark:text-gray-300">
                       £{((editingContact.value || 0) * ((editingContact.probability || 10) / 100)).toLocaleString()}
                     </span>
                   </div>
@@ -3204,7 +3306,7 @@ export const CrmView: React.FC = () => {
                     onChange={(e) => setEditingContact({ ...editingContact, notes: e.target.value })}
                     placeholder="Add notes about this contact, deal details, next steps..."
                     rows={5}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 resize-none placeholder-gray-400"
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border resize-none placeholder-gray-400"
                   />
                 </div>
 
@@ -3486,7 +3588,7 @@ export const CrmView: React.FC = () => {
               <div className="px-6 py-4 border-b border-gray-200 dark:border-dark-border bg-gold-50 dark:bg-gold-900/20">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-gold-100 dark:bg-gold-900/40 rounded-lg">
-                    <Bookmark size={20} className="text-gold-600 dark:text-gold-400" />
+                    <Bookmark size={20} className="text-gray-600 dark:text-gray-400 dark:text-gold-400" />
                   </div>
                   <div>
                     <h2 className="text-lg font-semibold text-gray-800 dark:text-dark-text">Save View</h2>
@@ -3505,7 +3607,7 @@ export const CrmView: React.FC = () => {
                   value={newViewName}
                   onChange={(e) => setNewViewName(e.target.value)}
                   placeholder="e.g., High Value Annual Deals"
-                  className="w-full text-sm border border-gray-200 dark:border-dark-border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-muted"
+                  className="w-full text-sm border border-gray-200 dark:border-dark-border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-muted"
                   autoFocus
                 />
 
@@ -3803,10 +3905,10 @@ Warm regards,
       { id: '2', name: 'Emergency Booking', type: 'booking', fields: ['Name', 'Phone', 'Address', 'Issue Description', 'Preferred Time'] }
     ],
     automations: [
-      { id: '1', name: 'Lead Notification', trigger: 'New form submission', actions: ['Send email to team', 'Create CRM contact', 'Add to pipeline'] },
-      { id: '2', name: 'Appointment Reminder', trigger: '24h before appointment', actions: ['Send SMS to customer', 'Send email reminder'] },
-      { id: '3', name: 'Review Trigger', trigger: 'Job marked complete', actions: ['Wait 2 days', 'Send review request email'] },
-      { id: '4', name: 'Re-engagement', trigger: 'No contact in 90 days', actions: ['Send check-in email', 'Add task for follow-up'] }
+      { id: '1', name: 'Lead Notification', trigger: 'New form submission', actions: ['Send email to team', 'Create CRM contact', 'Add to pipeline'], platform: 'n8n' as const },
+      { id: '2', name: 'Appointment Reminder', trigger: '24h before appointment', actions: ['Send SMS to customer', 'Send email reminder'], platform: 'n8n' as const },
+      { id: '3', name: 'Review Trigger', trigger: 'Job marked complete', actions: ['Wait 2 days', 'Send review request email'], platform: 'n8n' as const },
+      { id: '4', name: 'Re-engagement', trigger: 'No contact in 90 days', actions: ['Send check-in email', 'Add task for follow-up'], platform: 'n8n' as const }
     ],
     pipelines: [
       { id: '1', name: 'Sales Pipeline', stages: [
@@ -3952,8 +4054,8 @@ The {{restaurant}} Team`,
       { id: '2', name: 'Contact Form', type: 'contact', fields: ['Name', 'Email', 'Message'] }
     ],
     automations: [
-      { id: '1', name: 'Reservation Reminder', trigger: '4h before reservation', actions: ['Send SMS reminder', 'Send email reminder'] },
-      { id: '2', name: 'Review Request', trigger: '2h after reservation time', actions: ['Send review request email'] }
+      { id: '1', name: 'Reservation Reminder', trigger: '4h before reservation', actions: ['Send SMS reminder', 'Send email reminder'], platform: 'n8n' as const },
+      { id: '2', name: 'Review Request', trigger: '2h after reservation time', actions: ['Send review request email'], platform: 'n8n' as const }
     ],
     pipelines: [
       { id: '1', name: 'Event Inquiries', stages: [
@@ -4034,8 +4136,8 @@ Typography:
       { id: '2', name: 'Home Valuation', type: 'quote', fields: ['Name', 'Email', 'Phone', 'Property Address', 'Bedrooms', 'Bathrooms'] }
     ],
     automations: [
-      { id: '1', name: 'New Inquiry Alert', trigger: 'Form submission', actions: ['Send notification', 'Add to CRM', 'Start nurture sequence'] },
-      { id: '2', name: 'Showing Follow-up', trigger: 'After showing', actions: ['Send thank you email', 'Request feedback'] }
+      { id: '1', name: 'New Inquiry Alert', trigger: 'Form submission', actions: ['Send notification', 'Add to CRM', 'Start nurture sequence'], platform: 'n8n' as const },
+      { id: '2', name: 'Showing Follow-up', trigger: 'After showing', actions: ['Send thank you email', 'Request feedback'], platform: 'n8n' as const }
     ],
     pipelines: [
       { id: '1', name: 'Buyer Pipeline', stages: [
@@ -4090,9 +4192,9 @@ Typography:
       { id: '2', name: 'Contact Form', type: 'contact', fields: ['Name', 'Email', 'Message'] }
     ],
     automations: [
-      { id: '1', name: 'Call Reminder', trigger: '1h before call', actions: ['Send email reminder', 'Send SMS'] },
-      { id: '2', name: 'Post-Call Follow-up', trigger: 'Call completed', actions: ['Send thank you email', 'Add task: Send proposal'] },
-      { id: '3', name: 'Proposal Reminder', trigger: '3 days after proposal', actions: ['Send follow-up email'] }
+      { id: '1', name: 'Call Reminder', trigger: '1h before call', actions: ['Send email reminder', 'Send SMS'], platform: 'n8n' as const },
+      { id: '2', name: 'Post-Call Follow-up', trigger: 'Call completed', actions: ['Send thank you email', 'Add task: Send proposal'], platform: 'n8n' as const },
+      { id: '3', name: 'Proposal Reminder', trigger: '3 days after proposal', actions: ['Send follow-up email'], platform: 'n8n' as const }
     ],
     pipelines: [
       { id: '1', name: 'Sales Pipeline', stages: [
@@ -5099,7 +5201,7 @@ export const TemplatesView: React.FC = () => {
                     {(!editingSnapshot.websiteTemplates || editingSnapshot.websiteTemplates.length === 0) ? (
                       <div className="text-center py-12 bg-gray-50 dark:bg-dark-elevated rounded-xl border-2 border-dashed border-gray-200 dark:border-dark-border">
                         <div className="w-16 h-16 bg-gold-100 dark:bg-gold-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <Layout size={32} className="text-gold-500" />
+                          <Layout size={32} className="text-gray-500" />
                         </div>
                         <h3 className="text-lg font-medium text-gray-800 dark:text-dark-text mb-2">No templates yet</h3>
                         <p className="text-gray-500 dark:text-dark-muted mb-4">Add your first website template to this snapshot</p>
@@ -5163,8 +5265,8 @@ export const TemplatesView: React.FC = () => {
                                   /* Fallback placeholder */
                                   <div className="absolute inset-0 flex items-center justify-center">
                                     <div className="text-center">
-                                      <Layout size={32} className="text-gray-400 mx-auto mb-2" />
-                                      <span className="text-sm text-gray-400">No URL set</span>
+                                      <Layout size={32} className="text-gray-400 dark:text-dark-muted mx-auto mb-2" />
+                                      <span className="text-sm text-gray-500 dark:text-dark-muted">No URL set</span>
                                     </div>
                                   </div>
                                 )}
@@ -5295,7 +5397,7 @@ export const TemplatesView: React.FC = () => {
                     <div className="bg-gray-50 dark:bg-dark-elevated rounded-xl p-4 border border-gray-200 dark:border-dark-border">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-gold-100 dark:bg-gold-900/30 rounded-lg flex items-center justify-center">
-                          <Layout size={20} className="text-gold-500" />
+                          <Layout size={20} className="text-gray-500" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-gray-800 dark:text-dark-text">{viewingTemplate.name}</h3>
@@ -5304,7 +5406,7 @@ export const TemplatesView: React.FC = () => {
                               href={viewingTemplate.baseUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-sm text-gold-600 dark:text-gold-400 hover:text-gold-700 dark:hover:text-gold-300 flex items-center gap-1 truncate"
+                              className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1 truncate"
                             >
                               <Globe size={12} />
                               {viewingTemplate.baseUrl.replace(/^https?:\/\//, '')}
@@ -5319,7 +5421,7 @@ export const TemplatesView: React.FC = () => {
                     {(!viewingTemplate.pages || viewingTemplate.pages.length === 0) ? (
                       <div className="text-center py-12 bg-gray-50 dark:bg-dark-elevated rounded-xl border-2 border-dashed border-gray-200 dark:border-dark-border">
                         <div className="w-12 h-12 bg-gold-100 dark:bg-gold-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
-                          <FileText size={24} className="text-gold-500" />
+                          <FileText size={24} className="text-gray-500" />
                         </div>
                         <h3 className="text-base font-medium text-gray-800 dark:text-dark-text mb-1">No pages yet</h3>
                         <p className="text-sm text-gray-500 dark:text-dark-muted mb-3">Add pages to this website template</p>
@@ -5517,9 +5619,9 @@ export const TemplatesView: React.FC = () => {
                         >
                           <div className="flex flex-col items-center gap-3">
                             <div className="w-14 h-14 bg-gray-200 dark:bg-dark-border rounded-full flex items-center justify-center group-hover:bg-gold-100 dark:group-hover:bg-gold-900/30 transition-colors">
-                              <Plus size={24} className="text-gray-500 group-hover:text-gold-600 dark:group-hover:text-gold-400 transition-colors" />
+                              <Plus size={24} className="text-gray-500 group-hover:text-gray-600 dark:text-gray-400 dark:group-hover:text-gold-400 transition-colors" />
                             </div>
-                            <span className="text-sm font-medium text-gray-500 group-hover:text-gold-600 dark:group-hover:text-gold-400 transition-colors">Add Page</span>
+                            <span className="text-sm font-medium text-gray-500 group-hover:text-gray-600 dark:text-gray-400 dark:group-hover:text-gold-400 transition-colors">Add Page</span>
                           </div>
                         </button>
                       </div>
@@ -5624,7 +5726,7 @@ export const TemplatesView: React.FC = () => {
                         </button>
                         <button
                           onClick={handleDeletePage}
-                          className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
+                          className="flex-1 px-4 py-2 bg-gray-400 dark:bg-gray-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
                         >
                           Delete
                         </button>
@@ -5700,13 +5802,13 @@ export const TemplatesView: React.FC = () => {
                 {(!editingSnapshot.emailSequences || editingSnapshot.emailSequences.length === 0) ? (
                   <div className="text-center py-12 bg-gray-50 dark:bg-dark-elevated rounded-xl border-2 border-dashed border-gray-200 dark:border-dark-border">
                     <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Mail size={32} className="text-blue-500" />
+                      <Mail size={32} className="text-gray-500" />
                     </div>
                     <h3 className="text-lg font-medium text-gray-800 dark:text-dark-text mb-2">No email sequences yet</h3>
                     <p className="text-gray-500 dark:text-dark-muted mb-4">Add your first email sequence to this snapshot</p>
                     <button
                       onClick={() => openAddAssetModal('emails')}
-                      className="inline-flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
+                      className="inline-flex items-center gap-2 bg-gold-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors"
                     >
                       <Plus size={16} />
                       Add Email Sequence
@@ -5756,7 +5858,7 @@ export const TemplatesView: React.FC = () => {
                             <div className="space-y-3">
                               {(sequence.emails || []).slice(0, 3).map((email, idx) => (
                                 <div key={idx} className="flex items-center gap-3 pl-0">
-                                  <div className="relative z-10 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-sm">
+                                  <div className="relative z-10 w-6 h-6 bg-gold-500 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-sm">
                                     {idx + 1}
                                   </div>
                                   <div className="flex-1 bg-gray-50 dark:bg-dark-elevated rounded-lg px-3 py-2">
@@ -5784,7 +5886,7 @@ export const TemplatesView: React.FC = () => {
                             <Mail size={12} />
                             {sequence.emails?.length || 0} email{(sequence.emails?.length || 0) !== 1 ? 's' : ''}
                           </span>
-                          <span className="text-xs text-blue-600 dark:text-blue-400 font-semibold flex items-center gap-1 group-hover:gap-2 transition-all">
+                          <span className="text-xs text-gray-600 dark:text-gray-400 dark:text-blue-400 font-semibold flex items-center gap-1 group-hover:gap-2 transition-all">
                             Edit
                             <ArrowRight size={12} />
                           </span>
@@ -5802,13 +5904,13 @@ export const TemplatesView: React.FC = () => {
                 {(!editingSnapshot.forms || editingSnapshot.forms.length === 0) ? (
                   <div className="text-center py-12 bg-gray-50 dark:bg-dark-elevated rounded-xl border-2 border-dashed border-gray-200 dark:border-dark-border">
                     <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <FileText size={32} className="text-green-500" />
+                      <FileText size={32} className="text-gray-500" />
                     </div>
                     <h3 className="text-lg font-medium text-gray-800 dark:text-dark-text mb-2">No forms yet</h3>
                     <p className="text-gray-500 dark:text-dark-muted mb-4">Add your first form to this snapshot</p>
                     <button
                       onClick={() => openAddAssetModal('forms')}
-                      className="inline-flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition-colors"
+                      className="inline-flex items-center gap-2 bg-gray-600 dark:bg-gray-400 text-white dark:text-gray-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-500 dark:hover:bg-gray-500 transition-colors"
                     >
                       <Plus size={16} />
                       Add Form
@@ -5918,7 +6020,7 @@ export const TemplatesView: React.FC = () => {
                 {(!editingSnapshot.automations || editingSnapshot.automations.length === 0) ? (
                   <div className="text-center py-12 bg-gray-50 dark:bg-dark-elevated rounded-xl border-2 border-dashed border-gray-200 dark:border-dark-border">
                     <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Zap size={32} className="text-purple-500" />
+                      <Zap size={32} className="text-gray-500" />
                     </div>
                     <h3 className="text-lg font-medium text-gray-800 dark:text-dark-text mb-2">No automations yet</h3>
                     <p className="text-gray-500 dark:text-dark-muted mb-4">Add your first automation to this snapshot</p>
@@ -6165,7 +6267,7 @@ export const TemplatesView: React.FC = () => {
                       const typeLabels: { [key: string]: { name: string; color: string; gradient: string } } = {
                         'headline': { name: 'Headline', color: 'text-pink-600', gradient: 'from-pink-500 to-rose-500' },
                         'cta': { name: 'Call to Action', color: 'text-red-600', gradient: 'from-red-500 to-rose-500' },
-                        'description': { name: 'Description', color: 'text-blue-600', gradient: 'from-pink-500 to-fuchsia-500' },
+                        'description': { name: 'Description', color: 'text-gray-600 dark:text-gray-400', gradient: 'from-pink-500 to-fuchsia-500' },
                         'testimonial': { name: 'Testimonial', color: 'text-green-600', gradient: 'from-pink-500 to-purple-500' },
                       };
                       const typeInfo = typeLabels[block.type] || { name: block.type, color: 'text-gray-600', gradient: 'from-pink-500 to-rose-500' };
@@ -6488,7 +6590,7 @@ export const TemplatesView: React.FC = () => {
                                 }
                               });
                             }}
-                            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md z-10"
+                            className="absolute -top-1 -right-1 w-5 h-5 bg-gray-400 dark:bg-gray-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md z-10"
                           >
                             <X size={10} />
                           </button>
@@ -7209,7 +7311,7 @@ export const TemplatesView: React.FC = () => {
                                     }
                                   });
                                 }}
-                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all shadow-sm"
+                                className="absolute top-1 right-1 p-1 bg-gray-400 dark:bg-gray-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all shadow-sm"
                               >
                                 <X size={12} />
                               </button>
@@ -7448,12 +7550,12 @@ Examples:
                       previewingAsset.type === 'copy' ? 'bg-pink-100 dark:bg-pink-900/30' :
                       'bg-gold-100 dark:bg-gold-900/30'
                     }`}>
-                      {previewingAsset.type === 'emails' && <Mail size={24} className="text-blue-600 dark:text-blue-400" />}
+                      {previewingAsset.type === 'emails' && <Mail size={24} className="text-gray-600 dark:text-gray-400 dark:text-blue-400" />}
                       {previewingAsset.type === 'forms' && <FileText size={24} className="text-green-600 dark:text-green-400" />}
                       {previewingAsset.type === 'automations' && <Zap size={24} className="text-purple-600 dark:text-purple-400" />}
                       {previewingAsset.type === 'pipelines' && <GitBranch size={24} className="text-orange-600 dark:text-orange-400" />}
                       {previewingAsset.type === 'copy' && <Type size={24} className="text-pink-600 dark:text-pink-400" />}
-                      {previewingAsset.type === 'templates' && <Layout size={24} className="text-gold-600 dark:text-gold-400" />}
+                      {previewingAsset.type === 'templates' && <Layout size={24} className="text-gray-600 dark:text-gray-400 dark:text-gold-400" />}
                     </div>
                     <div>
                       <h2 className="text-xl font-semibold text-gray-800 dark:text-dark-text">{getAssetTypeLabel(previewingAsset.type)} Editor</h2>
@@ -7485,7 +7587,7 @@ Examples:
                       <div className="bg-gradient-to-br from-gold-50 to-gold-100/50 dark:from-gold-900/20 dark:to-gold-900/10 rounded-2xl p-6 border border-gold-200 dark:border-gold-800/30">
                         <h3 className="text-2xl font-bold text-gray-800 dark:text-dark-text mb-2">{template.name}</h3>
                         {template.previewUrl && (
-                          <a href={template.previewUrl} target="_blank" rel="noopener noreferrer" className="text-gold-600 dark:text-gold-400 hover:underline flex items-center gap-1">
+                          <a href={template.previewUrl} target="_blank" rel="noopener noreferrer" className="text-gray-600 dark:text-gray-400 dark:text-gold-400 hover:underline flex items-center gap-1">
                             <Globe size={14} />
                             {template.previewUrl}
                             <ExternalLink size={12} />
@@ -7502,7 +7604,7 @@ Examples:
                             <div key={idx} className="bg-white dark:bg-dark-card rounded-xl p-4 border border-gray-200 dark:border-dark-border hover:border-gold-300 dark:hover:border-gold-600 transition-colors">
                               <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-gold-100 dark:bg-gold-900/30 rounded-lg flex items-center justify-center">
-                                  <Monitor size={18} className="text-gold-600 dark:text-gold-400" />
+                                  <Monitor size={18} className="text-gray-600 dark:text-gray-400 dark:text-gold-400" />
                                 </div>
                                 <span className="font-medium text-gray-800 dark:text-dark-text">{page}</span>
                               </div>
@@ -7620,7 +7722,7 @@ Examples:
                             )}
                             {/* Editable Trigger */}
                             <div className="flex items-center gap-4 text-sm">
-                              <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+                              <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400 dark:text-blue-400">
                                 <Zap size={14} />
                                 Trigger:
                                 {inlineEditingField === 'sequence-trigger' ? (
@@ -7663,7 +7765,7 @@ Examples:
                           </div>
                           <button
                             onClick={saveChanges}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors"
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-gold-600 text-white rounded-lg text-sm font-medium transition-colors"
                           >
                             <Check size={14} />
                             Save
@@ -7690,7 +7792,7 @@ Examples:
                                   <div className="flex gap-4 items-start">
                                     {/* Timeline Node */}
                                     <div className="relative z-10 w-12 h-12 bg-white dark:bg-dark-card border-2 border-blue-400 dark:border-blue-500 rounded-full flex items-center justify-center shadow-sm">
-                                      <span className="text-blue-600 dark:text-blue-400 font-bold">{idx + 1}</span>
+                                      <span className="text-gray-600 dark:text-gray-400 dark:text-blue-400 font-bold">{idx + 1}</span>
                                     </div>
 
                                     {/* Email Card - Editable */}
@@ -7784,7 +7886,7 @@ Examples:
                                                 }}
                                                 className={`px-2 py-1 text-xs rounded font-medium transition-colors ${
                                                   email.delayDays === 0 && (!email.delayHours || email.delayHours === 0)
-                                                    ? 'bg-blue-500 text-white'
+                                                    ? 'bg-gold-500 text-white'
                                                     : 'bg-white dark:bg-dark-card text-gray-600 dark:text-dark-muted hover:bg-blue-100 dark:hover:bg-blue-800/30'
                                                 }`}
                                               >
@@ -7849,7 +7951,7 @@ Examples:
                                           ) : (
                                             <button
                                               onClick={() => setInlineEditingField(`email-${idx}-delay`)}
-                                              className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full font-medium hover:bg-blue-200 dark:hover:bg-blue-800/40 transition-colors"
+                                              className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-blue-100 dark:bg-blue-900/30 text-gray-600 dark:text-gray-400 dark:text-blue-400 rounded-full font-medium hover:bg-blue-200 dark:hover:bg-blue-800/40 transition-colors"
                                               title="Click to change delay"
                                             >
                                               <Clock size={12} />
@@ -8029,7 +8131,7 @@ Examples:
                             )}
                             <button
                               onClick={saveChanges}
-                              className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium transition-colors"
+                              className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-gray-500 dark:hover:bg-gray-500 text-white rounded-lg text-sm font-medium transition-colors"
                             >
                               <Check size={14} />
                               Save
@@ -8397,7 +8499,7 @@ Examples:
                           {/* End */}
                           <div className="flex justify-center pt-2">
                             <div className="flex items-center gap-2 text-sm text-gray-400 dark:text-dark-subtle">
-                              <Check size={16} className="text-green-500" />
+                              <Check size={16} className="text-gray-500" />
                               Workflow Complete
                             </div>
                           </div>
@@ -8675,7 +8777,7 @@ Examples:
                     switch (type) {
                       case 'headline': return { bg: 'bg-pink-50 dark:bg-pink-900/20', text: 'text-pink-600 dark:text-pink-400', icon: <Type size={14} /> };
                       case 'cta': return { bg: 'bg-green-50 dark:bg-green-900/20', text: 'text-green-600 dark:text-green-400', icon: <MousePointer size={14} /> };
-                      case 'description': return { bg: 'bg-blue-50 dark:bg-blue-900/20', text: 'text-blue-600 dark:text-blue-400', icon: <FileText size={14} /> };
+                      case 'description': return { bg: 'bg-blue-50 dark:bg-blue-900/20', text: 'text-gray-600 dark:text-gray-400 dark:text-blue-400', icon: <FileText size={14} /> };
                       case 'testimonial': return { bg: 'bg-yellow-50 dark:bg-yellow-900/20', text: 'text-yellow-600 dark:text-yellow-400', icon: <MessageSquare size={14} /> };
                       default: return { bg: 'bg-gray-50 dark:bg-gray-900/20', text: 'text-gray-600 dark:text-gray-400', icon: <Type size={14} /> };
                     }
@@ -8974,14 +9076,14 @@ Examples:
                               onClick={() => setSelectedVariantIndex(idx)}
                               className={`relative px-4 py-2.5 text-sm font-medium transition-colors ${
                                 selectedVariantIndex === idx
-                                  ? 'text-blue-600 dark:text-blue-400'
+                                  ? 'text-gray-600 dark:text-gray-400 dark:text-blue-400'
                                   : 'text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text'
                               }`}
                             >
                               <span className="flex items-center gap-2">
                                 <span className={`w-5 h-5 rounded-full text-xs flex items-center justify-center font-semibold ${
                                   selectedVariantIndex === idx
-                                    ? 'bg-blue-500 text-white'
+                                    ? 'bg-gold-500 text-white'
                                     : 'bg-gray-200 dark:bg-dark-elevated text-gray-600 dark:text-dark-muted'
                                 }`}>
                                   {variant.label}
@@ -9264,7 +9366,7 @@ Examples:
                           onClick={() => { setSelectedEmailIndex(idx); setSelectedVariantIndex(0); }}
                           className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-medium transition-all relative ${
                             idx === selectedEmailIndex
-                              ? 'bg-blue-500 text-white border-blue-500 z-10'
+                              ? 'bg-gold-500 text-white border-blue-500 z-10'
                               : 'bg-white dark:bg-dark-card text-gray-600 dark:text-dark-muted border-gray-200 dark:border-dark-border hover:border-blue-300'
                           }`}
                         >
@@ -9322,8 +9424,8 @@ Examples:
                     addingAssetType === 'copy' ? 'bg-pink-100 dark:bg-pink-900/30' :
                     'bg-gray-100 dark:bg-gray-800'
                   }`}>
-                    {addingAssetType === 'templates' && <Layout size={20} className="text-gold-600 dark:text-gold-400" />}
-                    {addingAssetType === 'emails' && <Mail size={20} className="text-blue-600 dark:text-blue-400" />}
+                    {addingAssetType === 'templates' && <Layout size={20} className="text-gray-600 dark:text-gray-400 dark:text-gold-400" />}
+                    {addingAssetType === 'emails' && <Mail size={20} className="text-gray-600 dark:text-gray-400 dark:text-blue-400" />}
                     {addingAssetType === 'forms' && <FileText size={20} className="text-green-600 dark:text-green-400" />}
                     {addingAssetType === 'automations' && <Zap size={20} className="text-purple-600 dark:text-purple-400" />}
                     {addingAssetType === 'pipelines' && <GitBranch size={20} className="text-orange-600 dark:text-orange-400" />}
@@ -9377,7 +9479,7 @@ Examples:
                               ...newTemplateForm,
                               pages: [{ id: generateId(), name: 'Home', url: '/' }]
                             })}
-                            className="text-sm text-gold-600 hover:text-gold-700 font-medium"
+                            className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 font-medium"
                           >
                             + Add a page
                           </button>
@@ -9424,7 +9526,7 @@ Examples:
                               ...newTemplateForm,
                               pages: [...newTemplateForm.pages, { id: generateId(), name: '', url: '' }]
                             })}
-                            className="text-sm text-gold-600 hover:text-gold-700 font-medium"
+                            className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 font-medium"
                           >
                             + Add Page
                           </button>
@@ -9495,7 +9597,7 @@ Examples:
                       ))}
                       <button
                         onClick={() => setNewEmailForm({ ...newEmailForm, emails: [...newEmailForm.emails, { subject: '', previewText: '' }] })}
-                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                        className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-700 font-medium"
                       >
                         + Add Email
                       </button>
@@ -9929,7 +10031,7 @@ Examples:
                           <Clock size={16} />
                           Email Sequence Timeline
                         </h3>
-                        <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">{newEmailForm.emails.length} email{newEmailForm.emails.length !== 1 ? 's' : ''}</span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400 dark:text-blue-400 font-medium">{newEmailForm.emails.length} email{newEmailForm.emails.length !== 1 ? 's' : ''}</span>
                       </div>
 
                       <div className="relative">
@@ -9946,7 +10048,7 @@ Examples:
                             {/* Email Card */}
                             <div className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-900/20 dark:to-dark-elevated rounded-xl border border-blue-100 dark:border-blue-900/30 p-4 hover:shadow-md transition-shadow">
                               <div className="flex items-center justify-between mb-3">
-                                <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-full">
+                                <span className="text-xs font-medium text-gray-600 dark:text-gray-400 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-full">
                                   Email {idx + 1}
                                 </span>
                                 {newEmailForm.emails.length > 1 && (
@@ -9996,7 +10098,7 @@ Examples:
                       {/* Add Email Button */}
                       <button
                         onClick={() => setNewEmailForm({ ...newEmailForm, emails: [...newEmailForm.emails, { subject: '', previewText: '', body: '' }] })}
-                        className="mt-4 w-full py-3 border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-xl text-blue-600 dark:text-blue-400 font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-400 dark:hover:border-blue-600 transition-colors flex items-center justify-center gap-2"
+                        className="mt-4 w-full py-3 border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-xl text-gray-600 dark:text-gray-400 dark:text-blue-400 font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-400 dark:hover:border-blue-600 transition-colors flex items-center justify-center gap-2"
                       >
                         <Plus size={18} />
                         Add Email to Sequence
@@ -10478,7 +10580,7 @@ Examples:
                         <div className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm ${
                           newCopyForm.type === 'headline' ? 'bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400' :
                           newCopyForm.type === 'cta' ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400' :
-                          newCopyForm.type === 'description' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' :
+                          newCopyForm.type === 'description' ? 'bg-blue-50 dark:bg-blue-900/20 text-gray-600 dark:text-gray-400 dark:text-blue-400' :
                           'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400'
                         }`}>
                           {newCopyForm.type === 'headline' && <><Type size={16} /> Bold, attention-grabbing text for headers</>}
@@ -10688,56 +10790,8 @@ Examples:
         </div>
       </div>
 
-      {/* Stats Summary Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gold-100 dark:bg-gold-900/30 rounded-lg flex items-center justify-center">
-              <Layers size={20} className="text-gold-600 dark:text-gold-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-semibold text-gray-800 dark:text-dark-text">{libraryStats.total}</p>
-              <p className="text-xs text-gray-500 dark:text-dark-muted">Total Snapshots</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-              <Package size={20} className="text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-semibold text-gray-800 dark:text-dark-text">{libraryStats.totalAssets}</p>
-              <p className="text-xs text-gray-500 dark:text-dark-muted">Total Assets</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-              <Play size={20} className="text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-semibold text-gray-800 dark:text-dark-text">{libraryStats.totalApplied}</p>
-              <p className="text-xs text-gray-500 dark:text-dark-muted">Times Applied</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
-              <FolderOpen size={20} className="text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-semibold text-gray-800 dark:text-dark-text">{libraryStats.industries}</p>
-              <p className="text-xs text-gray-500 dark:text-dark-muted">Industries</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Filters and Sort */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      {/* Filters and Search */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
         {/* Search */}
         <div className="relative flex-1">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-muted" />
@@ -10746,47 +10800,41 @@ Examples:
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search snapshots..."
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-dark-border rounded-xl bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-dark-subtle"
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-dark-subtle"
           />
         </div>
+
+        {/* Industry Filter Dropdown */}
+        <select
+          value={industryFilter}
+          onChange={(e) => setIndustryFilter(e.target.value as SnapshotIndustry | 'all')}
+          className={`px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 ${
+            industryFilter !== 'all'
+              ? 'border-gold-400 bg-gold-50 text-gray-700 dark:text-gray-300 dark:bg-gold-900/20 dark:text-gold-400 dark:border-gold-700'
+              : 'border-gray-200 bg-white text-gray-600 dark:border-dark-border dark:bg-dark-elevated dark:text-dark-muted'
+          }`}
+        >
+          <option value="all">All Industries</option>
+          {SNAPSHOT_INDUSTRIES.map(ind => (
+            <option key={ind.id} value={ind.id}>{ind.name}</option>
+          ))}
+        </select>
 
         {/* Sort Dropdown */}
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as 'name' | 'updated' | 'applied')}
-          className="px-3 py-2.5 border border-gray-200 dark:border-dark-border rounded-xl bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text text-sm focus:outline-none focus:ring-2 focus:ring-gold-500"
+          className="px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text text-sm focus:outline-none focus:ring-2 focus:ring-gold-500"
         >
           <option value="updated">Recently Updated</option>
           <option value="name">Name (A-Z)</option>
           <option value="applied">Most Applied</option>
         </select>
 
-        {/* Industry Filter - Clean text-only design */}
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => setIndustryFilter('all')}
-            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              industryFilter === 'all'
-                ? 'bg-gray-800 dark:bg-dark-text text-white dark:text-dark-bg'
-                : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-dark-muted hover:bg-gray-200 dark:hover:bg-dark-border'
-            }`}
-          >
-            All
-          </button>
-          {SNAPSHOT_INDUSTRIES.slice(0, 5).map(industry => (
-            <button
-              key={industry.id}
-              onClick={() => setIndustryFilter(industry.id)}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                industryFilter === industry.id
-                  ? 'bg-gray-800 dark:bg-dark-text text-white dark:text-dark-bg'
-                  : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-dark-muted hover:bg-gray-200 dark:hover:bg-dark-border'
-              }`}
-            >
-              {industry.name}
-            </button>
-          ))}
-        </div>
+        {/* Results count */}
+        <span className="text-sm text-gray-500 dark:text-dark-muted whitespace-nowrap">
+          {filteredSnapshots.length} snapshot{filteredSnapshots.length !== 1 ? 's' : ''} · {libraryStats.totalAssets} assets
+        </span>
       </div>
 
       {/* Snapshots Grid */}
@@ -10814,117 +10862,123 @@ Examples:
           {filteredSnapshots.map((snapshot) => {
             const industry = getIndustryInfo(snapshot.industry);
             const assets = countAssets(snapshot);
+            const firstWebsiteUrl = snapshot.websiteTemplates?.[0]?.baseUrl || null;
+
             return (
               <div
                 key={snapshot.id}
-                className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border overflow-hidden hover:border-gold-300 dark:hover:border-gold-600 hover:shadow-lg transition-all group cursor-pointer"
-                onClick={() => openSnapshotEditor(snapshot)}
+                className="group relative rounded-xl overflow-hidden bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-sm transition-all duration-300 hover:shadow-xl hover:border-gold-300 dark:hover:border-gold-600"
               >
-                {/* Card Content - Clean professional design */}
-                <div className="p-5">
-                  {/* Header row with industry badge and version */}
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-medium text-gray-500 dark:text-dark-muted uppercase tracking-wider">
-                      {industry.name}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-gray-400 dark:text-dark-subtle mr-1">
-                        v{snapshot.version}
-                      </span>
-                      {/* Duplicate button */}
+                {/* Preview Area - 16:10 aspect ratio */}
+                <div
+                  className="relative aspect-[16/10] bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-900 overflow-hidden cursor-pointer"
+                  onClick={() => openSnapshotEditor(snapshot)}
+                >
+                  {/* Live preview from first website template */}
+                  {firstWebsiteUrl ? (
+                    <div className="absolute inset-0" style={{ overflow: 'hidden', pointerEvents: 'none' }}>
+                      <div style={{ width: '403px', height: '840px', position: 'relative' }}>
+                        <iframe
+                          src={firstWebsiteUrl}
+                          title={snapshot.name}
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '1440px',
+                            height: '3000px',
+                            border: 'none',
+                            transform: 'scale(0.28)',
+                            transformOrigin: 'top left',
+                          }}
+                          sandbox="allow-scripts allow-same-origin"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    /* Fallback: Gradient with package icon */
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-20 h-20 bg-white/10 dark:bg-white/5 rounded-2xl flex items-center justify-center">
+                        <Package size={40} className="text-gray-400 dark:text-gray-600" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Hover overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+                    <div className="transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+                      <h3 className="font-semibold text-white text-base truncate mb-1">{snapshot.name}</h3>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-white/80 text-xs">{industry.name}</span>
+                        <span className="text-white/60 text-xs">·</span>
+                        <span className="text-white/80 text-xs">{assets.total} assets</span>
+                      </div>
+                    </div>
+
+                    {/* Quick action buttons */}
+                    <div className="flex items-center gap-2 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300 delay-75">
+                      {firstWebsiteUrl && (
+                        <a
+                          href={firstWebsiteUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-sm transition-colors"
+                          title="Open Live Site"
+                        >
+                          <ExternalLink size={16} className="text-white" />
+                        </a>
+                      )}
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDuplicateSnapshot(snapshot); }}
-                        className="p-1 text-gray-300 dark:text-dark-subtle hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-all"
+                        className="p-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-sm transition-colors"
                         title="Duplicate"
                       >
-                        <Copy size={14} />
+                        <Copy size={16} className="text-white" />
                       </button>
-                      {/* Delete button */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openSnapshotEditor(snapshot); }}
+                        className="p-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-sm transition-colors"
+                        title="Edit"
+                      >
+                        <Edit3 size={16} className="text-white" />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openApplyModal(snapshot); }}
+                        className="p-2 bg-gold-500/80 hover:bg-gold-500 rounded-lg backdrop-blur-sm transition-colors"
+                        title="Apply to Client"
+                      >
+                        <Play size={16} className="text-white" />
+                      </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDeleteSnapshot(snapshot.id); }}
-                        className="p-1 text-gray-300 dark:text-dark-subtle hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                        className="p-2 bg-white/20 hover:bg-red-500/50 rounded-lg backdrop-blur-sm transition-colors ml-auto"
                         title="Delete"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={16} className="text-white" />
                       </button>
                     </div>
                   </div>
+                </div>
 
-                  {/* Snapshot name and description */}
-                  <h3 className="font-semibold text-gray-800 dark:text-dark-text text-lg mb-2">{snapshot.name}</h3>
-                  <p className="text-sm text-gray-500 dark:text-dark-muted mb-4 line-clamp-2">{snapshot.description}</p>
-
-                  {/* Asset summary with icons */}
-                  <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-gray-100 dark:border-dark-border">
-                    {assets.templates > 0 && (
-                      <div className="flex items-center gap-1.5 px-2 py-1 bg-gold-50 dark:bg-gold-900/20 rounded-lg" title="Website Templates">
-                        <Layout size={12} className="text-gold-600 dark:text-gold-400" />
-                        <span className="text-xs font-medium text-gold-700 dark:text-gold-400">{assets.templates}</span>
-                      </div>
-                    )}
-                    {assets.emails > 0 && (
-                      <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 dark:bg-blue-900/20 rounded-lg" title="Email Sequences">
-                        <Mail size={12} className="text-blue-600 dark:text-blue-400" />
-                        <span className="text-xs font-medium text-blue-700 dark:text-blue-400">{assets.emails}</span>
-                      </div>
-                    )}
-                    {assets.forms > 0 && (
-                      <div className="flex items-center gap-1.5 px-2 py-1 bg-green-50 dark:bg-green-900/20 rounded-lg" title="Forms">
-                        <FileText size={12} className="text-green-600 dark:text-green-400" />
-                        <span className="text-xs font-medium text-green-700 dark:text-green-400">{assets.forms}</span>
-                      </div>
-                    )}
-                    {assets.automations > 0 && (
-                      <div className="flex items-center gap-1.5 px-2 py-1 bg-purple-50 dark:bg-purple-900/20 rounded-lg" title="Automations">
-                        <Zap size={12} className="text-purple-600 dark:text-purple-400" />
-                        <span className="text-xs font-medium text-purple-700 dark:text-purple-400">{assets.automations}</span>
-                      </div>
-                    )}
-                    {assets.pipelines > 0 && (
-                      <div className="flex items-center gap-1.5 px-2 py-1 bg-orange-50 dark:bg-orange-900/20 rounded-lg" title="Pipelines">
-                        <GitBranch size={12} className="text-orange-600 dark:text-orange-400" />
-                        <span className="text-xs font-medium text-orange-700 dark:text-orange-400">{assets.pipelines}</span>
-                      </div>
-                    )}
-                    {assets.copy > 0 && (
-                      <div className="flex items-center gap-1.5 px-2 py-1 bg-pink-50 dark:bg-pink-900/20 rounded-lg" title="Copy Blocks">
-                        <Type size={12} className="text-pink-600 dark:text-pink-400" />
-                        <span className="text-xs font-medium text-pink-700 dark:text-pink-400">{assets.copy}</span>
-                      </div>
-                    )}
-                    {assets.total === 0 && (
-                      <span className="text-xs text-gray-400 dark:text-dark-subtle">No assets</span>
-                    )}
-                  </div>
-
-                  {/* Applied count and last updated */}
-                  <div className="flex items-center justify-between text-xs text-gray-400 dark:text-dark-subtle mb-4">
-                    <span>
-                      {snapshot.timesApplied > 0
-                        ? `Applied ${snapshot.timesApplied} time${snapshot.timesApplied !== 1 ? 's' : ''}`
-                        : 'Never applied'}
-                    </span>
-                    <span>
-                      Updated {new Date(snapshot.updatedAt || snapshot.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); openSnapshotEditor(snapshot); }}
-                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg text-sm font-medium text-gray-600 dark:text-dark-muted hover:bg-gray-50 dark:hover:bg-dark-elevated transition-colors"
-                    >
-                      <Edit3 size={14} />
-                      Edit
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); openApplyModal(snapshot); }}
-                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gold-500 text-white rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors"
-                    >
-                      <Play size={14} />
-                      Apply
-                    </button>
+                {/* Simple footer */}
+                <div
+                  className="p-3 border-t border-gray-100 dark:border-dark-border cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-hover transition-colors"
+                  onClick={() => openSnapshotEditor(snapshot)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0">
+                      <h4 className="font-medium text-gray-800 dark:text-dark-text text-sm truncate">{snapshot.name}</h4>
+                      <p className="text-xs text-gray-500 dark:text-dark-muted">{industry.name} · {assets.total} assets</p>
+                    </div>
+                    {/* Simple asset icons - monochrome */}
+                    <div className="flex items-center gap-1.5 text-gray-400 dark:text-dark-muted">
+                      {assets.templates > 0 && <Layout size={14} title="Website Templates" />}
+                      {assets.emails > 0 && <Mail size={14} title="Email Sequences" />}
+                      {assets.forms > 0 && <FileText size={14} title="Forms" />}
+                      {assets.automations > 0 && <Zap size={14} title="Automations" />}
+                      {assets.pipelines > 0 && <GitBranch size={14} title="Pipelines" />}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -10982,14 +11036,14 @@ Examples:
                     onClick={() => setPreviewTab(tab.id as typeof previewTab)}
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                       previewTab === tab.id
-                        ? 'bg-white dark:bg-dark-card text-gold-600 dark:text-gold-400 shadow-sm'
+                        ? 'bg-white dark:bg-dark-card text-gray-600 dark:text-gray-400 dark:text-gold-400 shadow-sm'
                         : 'text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text'
                     }`}
                   >
                     <tab.icon size={14} />
                     {tab.label}
                     <span className={`text-xs px-1.5 py-0.5 rounded ${
-                      previewTab === tab.id ? 'bg-gold-100 dark:bg-gold-900/30 text-gold-700 dark:text-gold-400' : 'bg-gray-200 dark:bg-dark-border text-gray-500 dark:text-dark-muted'
+                      previewTab === tab.id ? 'bg-gold-100 dark:bg-gold-900/30 text-gray-700 dark:text-gray-300 dark:text-gold-400' : 'bg-gray-200 dark:bg-dark-border text-gray-500 dark:text-dark-muted'
                     }`}>
                       {tab.count}
                     </span>
@@ -11009,7 +11063,7 @@ Examples:
                         <div key={template.id} className="bg-gray-50 dark:bg-dark-elevated rounded-lg p-4">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-gold-100 dark:bg-gold-900/30 rounded-lg flex items-center justify-center">
-                              <Layout size={20} className="text-gold-600 dark:text-gold-400" />
+                              <Layout size={20} className="text-gray-600 dark:text-gray-400 dark:text-gold-400" />
                             </div>
                             <div>
                               <h4 className="font-medium text-gray-800 dark:text-dark-text">{template.name}</h4>
@@ -11032,7 +11086,7 @@ Examples:
                         <div key={sequence.id} className="bg-gray-50 dark:bg-dark-elevated rounded-lg p-4">
                           <div className="flex items-start gap-3">
                             <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <Mail size={20} className="text-blue-600 dark:text-blue-400" />
+                              <Mail size={20} className="text-gray-600 dark:text-gray-400 dark:text-blue-400" />
                             </div>
                             <div className="flex-1">
                               <h4 className="font-medium text-gray-800 dark:text-dark-text">{sequence.name}</h4>
@@ -11267,7 +11321,7 @@ Examples:
                           checked={applyOptions[item.key as keyof SnapshotApplyOptions] as boolean}
                           onChange={(e) => setApplyOptions({ ...applyOptions, [item.key]: e.target.checked })}
                           disabled={item.count === 0}
-                          className="w-4 h-4 text-gold-500 rounded border-gray-300 focus:ring-gold-500"
+                          className="w-4 h-4 text-gray-500 rounded border-gray-300 focus:ring-gold-500"
                         />
                         <item.icon size={16} className="text-gray-500 dark:text-dark-muted" />
                         <span className="text-sm text-gray-700 dark:text-dark-text">{item.label}</span>
@@ -11565,6 +11619,8 @@ export const TasksView: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<CalendarTask | null>(null);
   const [editingNotes, setEditingNotes] = useState(false);
   const [tempNotes, setTempNotes] = useState('');
+  const [editingTaskTitle, setEditingTaskTitle] = useState(false);
+  const [tempTaskTitle, setTempTaskTitle] = useState('');
   const [newLinkTitle, setNewLinkTitle] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
@@ -12388,7 +12444,17 @@ export const TasksView: React.FC = () => {
   const closeTaskDetail = () => {
     setSelectedTask(null);
     setEditingNotes(false);
+    setEditingTaskTitle(false);
     setActiveDetailTab('details');
+  };
+
+  // Save task title
+  const saveTaskTitle = () => {
+    if (!selectedTask || !tempTaskTitle.trim()) return;
+    setTasks(tasks.map(t => t.id === selectedTask.id ? { ...t, title: tempTaskTitle.trim() } : t));
+    setSelectedTask({ ...selectedTask, title: tempTaskTitle.trim() });
+    setEditingTaskTitle(false);
+    showToast('success', 'Task title updated');
   };
 
   // Save notes
@@ -12490,12 +12556,12 @@ export const TasksView: React.FC = () => {
 
   // Get priority styles
   const getPriorityStyles = (priority: string, completed: boolean) => {
-    if (completed) return 'bg-gray-50 border-gray-200';
+    if (completed) return 'bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30';
     switch (priority) {
-      case 'high': return 'bg-red-50 border-red-200 border-l-red-500';
-      case 'medium': return 'bg-gold-50 border-gold-200 border-l-gold-500';
-      case 'low': return 'bg-blue-50 border-blue-200 border-l-blue-500';
-      default: return 'bg-gray-50 border-gray-200';
+      case 'high': return 'bg-red-50/70 dark:bg-red-900/10 border-red-100 dark:border-red-900/20 border-l-red-400';
+      case 'medium': return 'bg-amber-50/70 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/20 border-l-amber-400';
+      case 'low': return 'bg-blue-50/70 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/20 border-l-blue-400';
+      default: return 'bg-gray-50 border-gray-200 dark:bg-dark-elevated dark:border-dark-border';
     }
   };
 
@@ -12517,7 +12583,7 @@ export const TasksView: React.FC = () => {
             onClick={(e) => { e.stopPropagation(); toggleTaskSelection(task.id); }}
             className={`mt-0.5 flex-shrink-0 p-0.5 rounded transition-colors ${
               isSelected
-                ? 'text-gold-500'
+                ? 'text-gray-500'
                 : 'text-gray-300 hover:text-gray-400'
             }`}
           >
@@ -12525,7 +12591,7 @@ export const TasksView: React.FC = () => {
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); toggleTaskComplete(task.id); }}
-            className={`mt-0.5 flex-shrink-0 ${task.completed ? 'text-green-500' : 'text-gray-300 hover:text-gold-500'}`}
+            className={`mt-0.5 flex-shrink-0 ${task.completed ? 'text-green-500' : 'text-gray-300 hover:text-gray-500'}`}
           >
             {task.completed ? <Check size={20} /> : <CheckSquare size={20} />}
           </button>
@@ -12551,9 +12617,9 @@ export const TasksView: React.FC = () => {
               <div className="flex items-center gap-2 flex-shrink-0">
                 {!task.completed && (
                   <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                    task.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                    task.priority === 'medium' ? 'bg-gold-100 text-gold-700 dark:bg-gold-900/30 dark:text-gold-400' :
-                    'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                    task.priority === 'high' ? 'bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800' :
+                    task.priority === 'medium' ? 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300' :
+                    'bg-gray-100 text-gray-600 dark:bg-dark-elevated dark:text-gray-400'
                   }`}>
                     {task.priority}
                   </span>
@@ -12629,7 +12695,7 @@ export const TasksView: React.FC = () => {
               <div className="p-3 bg-gray-50 rounded-full mb-3">
                 {icon}
               </div>
-              <p className="text-sm text-gray-400">{emptyMessage || 'No tasks'}</p>
+              <p className="text-sm text-gray-500 dark:text-dark-muted">{emptyMessage || 'No tasks'}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -12671,7 +12737,7 @@ export const TasksView: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search tasks..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
             />
           </div>
 
@@ -12680,7 +12746,7 @@ export const TasksView: React.FC = () => {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value as any)}
-              className="px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg text-sm focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white dark:bg-dark-card dark:text-dark-text"
+              className="px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg text-sm focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white dark:bg-dark-card dark:text-dark-text"
             >
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
@@ -12690,7 +12756,7 @@ export const TasksView: React.FC = () => {
             <select
               value={filterPriority}
               onChange={(e) => setFilterPriority(e.target.value as any)}
-              className="px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg text-sm focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white dark:bg-dark-card dark:text-dark-text"
+              className="px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg text-sm focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white dark:bg-dark-card dark:text-dark-text"
             >
               <option value="all">All Priority</option>
               <option value="high">High</option>
@@ -12701,7 +12767,7 @@ export const TasksView: React.FC = () => {
             <select
               value={filterClient}
               onChange={(e) => setFilterClient(e.target.value)}
-              className="px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg text-sm focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white dark:bg-dark-card dark:text-dark-text"
+              className="px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg text-sm focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white dark:bg-dark-card dark:text-dark-text"
             >
               <option value="all">All Clients</option>
               <option value="">Personal Tasks</option>
@@ -12713,7 +12779,7 @@ export const TasksView: React.FC = () => {
             <select
               value={filterProject}
               onChange={(e) => setFilterProject(e.target.value)}
-              className="px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg text-sm focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white dark:bg-dark-card dark:text-dark-text"
+              className="px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg text-sm focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white dark:bg-dark-card dark:text-dark-text"
             >
               <option value="all">All Projects</option>
               <option value="">No Project</option>
@@ -12725,7 +12791,7 @@ export const TasksView: React.FC = () => {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white dark:bg-dark-card dark:border-dark-border dark:text-dark-text"
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white dark:bg-dark-card dark:border-dark-border dark:text-dark-text"
             >
               <option value="dueDate">Sort by Due Date</option>
               <option value="priority">Sort by Priority</option>
@@ -12736,28 +12802,28 @@ export const TasksView: React.FC = () => {
             <div className="flex items-center bg-gray-100 dark:bg-dark-hover rounded-lg p-1">
               <button
                 onClick={() => setViewType('quadrant')}
-                className={`p-2 rounded-md transition-all ${viewType === 'quadrant' ? 'bg-white dark:bg-dark-card shadow-sm text-gold-600' : 'text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text'}`}
+                className={`p-2 rounded-md transition-all ${viewType === 'quadrant' ? 'bg-white dark:bg-dark-card shadow-sm text-gray-600 dark:text-gray-400' : 'text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text'}`}
                 title="Quadrant View"
               >
                 <LayoutGrid size={16} />
               </button>
               <button
                 onClick={() => setViewType('list')}
-                className={`p-2 rounded-md transition-all ${viewType === 'list' ? 'bg-white dark:bg-dark-card shadow-sm text-gold-600' : 'text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text'}`}
+                className={`p-2 rounded-md transition-all ${viewType === 'list' ? 'bg-white dark:bg-dark-card shadow-sm text-gray-600 dark:text-gray-400' : 'text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text'}`}
                 title="List View"
               >
                 <LayoutList size={16} />
               </button>
               <button
                 onClick={() => setViewType('kanban')}
-                className={`p-2 rounded-md transition-all ${viewType === 'kanban' ? 'bg-white dark:bg-dark-card shadow-sm text-gold-600' : 'text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text'}`}
+                className={`p-2 rounded-md transition-all ${viewType === 'kanban' ? 'bg-white dark:bg-dark-card shadow-sm text-gray-600 dark:text-gray-400' : 'text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text'}`}
                 title="Kanban View"
               >
                 <Columns size={16} />
               </button>
               <button
                 onClick={() => setViewType('table')}
-                className={`p-2 rounded-md transition-all ${viewType === 'table' ? 'bg-white dark:bg-dark-card shadow-sm text-gold-600' : 'text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text'}`}
+                className={`p-2 rounded-md transition-all ${viewType === 'table' ? 'bg-white dark:bg-dark-card shadow-sm text-gray-600 dark:text-gray-400' : 'text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text'}`}
                 title="Table View"
               >
                 <Table2 size={16} />
@@ -12772,7 +12838,7 @@ export const TasksView: React.FC = () => {
               <FolderKanban size={16} />
               Projects
               {projects.length > 0 && (
-                <span className="px-1.5 py-0.5 bg-gold-100 dark:bg-gold-900/30 text-gold-700 dark:text-gold-400 text-xs rounded-full">{projects.length}</span>
+                <span className="px-1.5 py-0.5 bg-gold-100 dark:bg-gold-900/30 text-gray-700 dark:text-gray-300 dark:text-gold-400 text-xs rounded-full">{projects.length}</span>
               )}
             </button>
           </div>
@@ -12783,13 +12849,13 @@ export const TasksView: React.FC = () => {
       {selectedTaskIds.size > 0 && (
         <div className="bg-gold-50 dark:bg-gold-900/20 border border-gold-200 dark:border-gold-800 rounded-xl p-4 mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-gold-700 dark:text-gold-400">
+            <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300 dark:text-gold-400">
               <CheckCheck size={18} />
               <span className="font-medium">{selectedTaskIds.size} task{selectedTaskIds.size > 1 ? 's' : ''} selected</span>
             </div>
             <button
               onClick={clearTaskSelection}
-              className="text-sm text-gold-600 dark:text-gold-400 hover:text-gold-800 underline"
+              className="text-sm text-gray-600 dark:text-gray-400 dark:text-gold-400 hover:text-gold-800 underline"
             >
               Clear selection
             </button>
@@ -12866,7 +12932,7 @@ export const TasksView: React.FC = () => {
           title="Today"
           tasks={todayTasks}
           icon={<Calendar size={18} />}
-          color="text-gold-600"
+          color="text-gray-600 dark:text-gray-400"
           bgColor="bg-gold-50"
           borderColor="border-gold-200"
           emptyMessage="No tasks for today"
@@ -12877,7 +12943,7 @@ export const TasksView: React.FC = () => {
           title="This Week"
           tasks={thisWeekTasks}
           icon={<Calendar size={18} />}
-          color="text-blue-600"
+          color="text-gray-600 dark:text-gray-400"
           bgColor="bg-blue-50"
           borderColor="border-blue-200"
           emptyMessage="No tasks this week"
@@ -12931,7 +12997,7 @@ export const TasksView: React.FC = () => {
                 <p className="text-gray-500 dark:text-dark-muted">No tasks found</p>
                 <button
                   onClick={() => setShowAddTask(true)}
-                  className="mt-4 text-gold-600 hover:text-gold-700 text-sm font-medium"
+                  className="mt-4 text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 text-sm font-medium"
                 >
                   Create your first task
                 </button>
@@ -12948,7 +13014,7 @@ export const TasksView: React.FC = () => {
                     {/* Checkbox */}
                     <button
                       onClick={(e) => { e.stopPropagation(); toggleTaskComplete(task.id); }}
-                      className={`flex-shrink-0 ${task.completed ? 'text-green-500' : 'text-gray-300 dark:text-dark-muted hover:text-gold-500'}`}
+                      className={`flex-shrink-0 ${task.completed ? 'text-green-500' : 'text-gray-300 dark:text-dark-muted hover:text-gray-500'}`}
                     >
                       {task.completed ? <Check size={20} /> : <CheckSquare size={20} />}
                     </button>
@@ -12987,8 +13053,8 @@ export const TasksView: React.FC = () => {
                     {/* Priority Badge */}
                     {!task.completed && (
                       <span className={`text-xs px-2 py-1 rounded-full font-medium flex-shrink-0 ${
-                        task.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                        task.priority === 'medium' ? 'bg-gold-100 text-gold-700 dark:bg-gold-900/30 dark:text-gold-400' :
+                        task.priority === 'high' ? 'bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800' :
+                        task.priority === 'medium' ? 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300' :
                         'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                       }`}>
                         {task.priority}
@@ -13047,7 +13113,7 @@ export const TasksView: React.FC = () => {
                 <div
                   key={task.id}
                   onClick={() => openTaskDetail(task)}
-                  className={`p-4 bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-dark-border cursor-pointer hover:shadow-md transition-all ${task.priority === 'high' ? 'border-l-4 border-l-red-500' : task.priority === 'medium' ? 'border-l-4 border-l-gold-500' : 'border-l-4 border-l-blue-500'}`}
+                  className={`p-4 bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-dark-border cursor-pointer hover:shadow-md transition-all ${task.priority === 'high' ? 'border-l-4 border-l-gray-800 dark:border-l-gray-200' : task.priority === 'medium' ? 'border-l-4 border-l-gray-400' : 'border-l-4 border-l-gray-200 dark:border-l-gray-600'}`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-medium text-gray-800 dark:text-dark-text text-sm">{task.title}</p>
@@ -13080,14 +13146,14 @@ export const TasksView: React.FC = () => {
           </div>
 
           {/* In Progress Column */}
-          <div className="flex-shrink-0 w-80 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
-            <div className="px-4 py-3 border-b border-blue-200 dark:border-blue-800">
+          <div className="flex-shrink-0 w-80 bg-gray-100 dark:bg-dark-elevated rounded-xl">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-dark-border">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-blue-500" />
+                <h3 className="font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-gray-500" />
                   In Progress
                 </h3>
-                <span className="text-sm text-blue-600 dark:text-blue-400 bg-white dark:bg-dark-card px-2 py-0.5 rounded-full">
+                <span className="text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-dark-card px-2 py-0.5 rounded-full">
                   {filteredTasks.filter(t => !t.completed && t.status === 'in_progress').length}
                 </span>
               </div>
@@ -13097,7 +13163,7 @@ export const TasksView: React.FC = () => {
                 <div
                   key={task.id}
                   onClick={() => openTaskDetail(task)}
-                  className={`p-4 bg-white dark:bg-dark-card rounded-lg border border-blue-200 dark:border-blue-800 cursor-pointer hover:shadow-md transition-all ${task.priority === 'high' ? 'border-l-4 border-l-red-500' : task.priority === 'medium' ? 'border-l-4 border-l-gold-500' : 'border-l-4 border-l-blue-500'}`}
+                  className={`p-4 bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-dark-border cursor-pointer hover:shadow-md transition-all ${task.priority === 'high' ? 'border-l-4 border-l-gray-800 dark:border-l-gray-200' : task.priority === 'medium' ? 'border-l-4 border-l-gray-400' : 'border-l-4 border-l-gray-200 dark:border-l-gray-600'}`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-medium text-gray-800 dark:text-dark-text text-sm">{task.title}</p>
@@ -13130,14 +13196,14 @@ export const TasksView: React.FC = () => {
           </div>
 
           {/* Review Column */}
-          <div className="flex-shrink-0 w-80 bg-gold-50 dark:bg-gold-900/20 rounded-xl">
-            <div className="px-4 py-3 border-b border-gold-200 dark:border-gold-800">
+          <div className="flex-shrink-0 w-80 bg-gray-50 dark:bg-dark-hover rounded-xl">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-dark-border">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-gold-700 dark:text-gold-400 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-gold-500" />
+                <h3 className="font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-gray-400" />
                   Review
                 </h3>
-                <span className="text-sm text-gold-600 dark:text-gold-400 bg-white dark:bg-dark-card px-2 py-0.5 rounded-full">
+                <span className="text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-dark-card px-2 py-0.5 rounded-full">
                   {filteredTasks.filter(t => !t.completed && t.status === 'review').length}
                 </span>
               </div>
@@ -13147,7 +13213,7 @@ export const TasksView: React.FC = () => {
                 <div
                   key={task.id}
                   onClick={() => openTaskDetail(task)}
-                  className={`p-4 bg-white dark:bg-dark-card rounded-lg border border-gold-200 dark:border-gold-800 cursor-pointer hover:shadow-md transition-all ${task.priority === 'high' ? 'border-l-4 border-l-red-500' : task.priority === 'medium' ? 'border-l-4 border-l-gold-500' : 'border-l-4 border-l-blue-500'}`}
+                  className={`p-4 bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-dark-border cursor-pointer hover:shadow-md transition-all ${task.priority === 'high' ? 'border-l-4 border-l-gray-800 dark:border-l-gray-200' : task.priority === 'medium' ? 'border-l-4 border-l-gray-400' : 'border-l-4 border-l-gray-200 dark:border-l-gray-600'}`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-medium text-gray-800 dark:text-dark-text text-sm">{task.title}</p>
@@ -13262,7 +13328,7 @@ export const TasksView: React.FC = () => {
                         <td className="px-4 py-3">
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleTaskComplete(task.id); }}
-                            className={`${task.completed ? 'text-green-500' : 'text-gray-300 dark:text-dark-muted hover:text-gold-500'}`}
+                            className={`${task.completed ? 'text-green-500' : 'text-gray-300 dark:text-dark-muted hover:text-gray-500'}`}
                           >
                             {task.completed ? <Check size={18} /> : <CheckSquare size={18} />}
                           </button>
@@ -13294,9 +13360,9 @@ export const TasksView: React.FC = () => {
                         </td>
                         <td className="px-4 py-3">
                           <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                            task.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                            task.priority === 'medium' ? 'bg-gold-100 text-gold-700 dark:bg-gold-900/30 dark:text-gold-400' :
-                            'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                            task.priority === 'high' ? 'bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800' :
+                            task.priority === 'medium' ? 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300' :
+                            'bg-gray-100 text-gray-600 dark:bg-dark-elevated dark:text-gray-400'
                           }`}>
                             {task.priority}
                           </span>
@@ -13395,7 +13461,7 @@ export const TasksView: React.FC = () => {
                 <div className="px-6 py-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-purple-100">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                      <Copy size={16} className="text-purple-500" />
+                      <Copy size={16} className="text-gray-500" />
                       Task Templates
                     </h3>
                     <button
@@ -13417,9 +13483,9 @@ export const TasksView: React.FC = () => {
                             <p className="font-medium text-gray-800 truncate">{template.name}</p>
                             <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
                               <span className={`px-1.5 py-0.5 rounded ${
-                                template.priority === 'high' ? 'bg-red-100 text-red-600' :
-                                template.priority === 'medium' ? 'bg-gold-100 text-gold-600' :
-                                'bg-blue-100 text-blue-600'
+                                template.priority === 'high' ? 'bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800' :
+                                template.priority === 'medium' ? 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300' :
+                                'bg-blue-100 text-gray-600 dark:text-gray-400'
                               }`}>
                                 {template.priority}
                               </span>
@@ -13433,7 +13499,7 @@ export const TasksView: React.FC = () => {
                                 <span>{template.subtasks.length} subtasks</span>
                               )}
                               {template.isRecurring && (
-                                <Repeat size={10} className="text-purple-500" />
+                                <Repeat size={10} className="text-gray-500" />
                               )}
                             </div>
                           </div>
@@ -13489,7 +13555,7 @@ export const TasksView: React.FC = () => {
                     <select
                       value={newTask.clientId}
                       onChange={(e) => setNewTask({ ...newTask, clientId: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white"
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white"
                     >
                       <option value="">Personal</option>
                       {clients.map(client => (
@@ -13507,7 +13573,7 @@ export const TasksView: React.FC = () => {
                       type="date"
                       value={newTask.dueDate}
                       onChange={(e) => { setNewTask({ ...newTask, dueDate: e.target.value }); setTaskErrors({ ...taskErrors, dueDate: '' }); }}
-                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 ${taskErrors.dueDate ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'}`}
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border ${taskErrors.dueDate ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'}`}
                     />
                     {taskErrors.dueDate && <p className="text-xs text-red-500 mt-1">{taskErrors.dueDate}</p>}
                   </div>
@@ -13520,7 +13586,7 @@ export const TasksView: React.FC = () => {
                     <select
                       value={newTask.status}
                       onChange={(e) => setNewTask({ ...newTask, status: e.target.value as TaskStatus })}
-                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white"
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white"
                     >
                       <option value="todo">To Do</option>
                       <option value="in_progress">In Progress</option>
@@ -13539,10 +13605,10 @@ export const TasksView: React.FC = () => {
                         <button
                           key={p}
                           onClick={() => setNewTask({ ...newTask, priority: p })}
-                          className={`flex-1 px-2 py-2 text-xs font-medium rounded-lg transition-colors ${
+                          className={`flex-1 px-2 py-2 text-xs font-medium rounded-lg transition-colors border ${
                             newTask.priority === p
-                              ? p === 'high' ? 'bg-red-500 text-white' : p === 'medium' ? 'bg-gold-500 text-white' : 'bg-blue-500 text-white'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              ? 'bg-gray-100 dark:bg-dark-elevated text-gray-800 dark:text-gray-200 border-gold-500'
+                              : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-gray-400 border-transparent hover:bg-gray-200 dark:hover:bg-dark-hover'
                           }`}
                         >
                           {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -13557,7 +13623,7 @@ export const TasksView: React.FC = () => {
               <div className="px-6 py-4 border-b border-gray-100">
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                    <Repeat size={16} className="text-purple-500" />
+                    <Repeat size={16} className="text-gray-500" />
                     Recurring Task
                   </label>
                   <button
@@ -13595,7 +13661,7 @@ export const TasksView: React.FC = () => {
               {/* Time Estimate Section */}
               <div className="px-6 py-4 border-b border-gray-100">
                 <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
-                  <Timer size={16} className="text-blue-500" />
+                  <Timer size={16} className="text-gray-500" />
                   Time Estimate
                 </label>
                 <div className="flex items-center gap-3">
@@ -13654,7 +13720,7 @@ export const TasksView: React.FC = () => {
                       <div key={subtask.id} className="flex items-center gap-2 group">
                         <button
                           onClick={() => toggleNewTaskSubtask(subtask.id)}
-                          className={`flex-shrink-0 ${subtask.completed ? 'text-green-500' : 'text-gray-300 hover:text-gold-500'}`}
+                          className={`flex-shrink-0 ${subtask.completed ? 'text-green-500' : 'text-gray-300 hover:text-gray-500'}`}
                         >
                           {subtask.completed ? <Check size={18} /> : <CheckSquare size={18} />}
                         </button>
@@ -13705,7 +13771,7 @@ export const TasksView: React.FC = () => {
                   onChange={(e) => setNewTask({ ...newTask, notes: e.target.value })}
                   placeholder="Add notes, details, or context..."
                   rows={4}
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 resize-none placeholder-gray-400"
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border resize-none placeholder-gray-400"
                 />
               </div>
 
@@ -13731,7 +13797,7 @@ export const TasksView: React.FC = () => {
                           href={link.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex-1 text-sm text-blue-600 hover:underline truncate"
+                          className="flex-1 text-sm text-gray-600 dark:text-gray-400 hover:underline truncate"
                         >
                           {link.title}
                         </a>
@@ -13753,7 +13819,7 @@ export const TasksView: React.FC = () => {
                     value={newTaskLinkTitle}
                     onChange={(e) => setNewTaskLinkTitle(e.target.value)}
                     placeholder="Link title"
-                    className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+                    className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
                   />
                   <input
                     type="text"
@@ -13761,7 +13827,7 @@ export const TasksView: React.FC = () => {
                     onChange={(e) => setNewTaskLinkUrl(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && addNewTaskLink()}
                     placeholder="URL"
-                    className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+                    className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
                   />
                   <button
                     onClick={addNewTaskLink}
@@ -13843,16 +13909,16 @@ export const TasksView: React.FC = () => {
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
             {/* Header */}
             <div className={`p-6 border-b ${
-              selectedTask.priority === 'high' ? 'bg-red-50 border-red-100' :
-              selectedTask.priority === 'medium' ? 'bg-gold-50 border-gold-100' :
+              selectedTask.priority === 'high' ? 'bg-gray-100 border-gray-300 dark:bg-dark-elevated dark:border-gray-600' :
+              selectedTask.priority === 'medium' ? 'bg-gray-50 border-gray-200 dark:bg-dark-hover dark:border-gray-700' :
               'bg-blue-50 border-blue-100'
             }`}>
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                      selectedTask.priority === 'high' ? 'bg-red-100 text-red-700' :
-                      selectedTask.priority === 'medium' ? 'bg-gold-100 text-gold-700' :
+                      selectedTask.priority === 'high' ? 'bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800' :
+                      selectedTask.priority === 'medium' ? 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300' :
                       'bg-blue-100 text-blue-700'
                     }`}>
                       {selectedTask.priority} priority
@@ -13863,9 +13929,36 @@ export const TasksView: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  <h3 className={`text-xl font-bold ${selectedTask.completed ? 'line-through text-gray-500' : 'text-gray-800'}`}>
-                    {selectedTask.title}
-                  </h3>
+                  {editingTaskTitle ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={tempTaskTitle}
+                        onChange={(e) => setTempTaskTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveTaskTitle();
+                          if (e.key === 'Escape') setEditingTaskTitle(false);
+                        }}
+                        className="flex-1 text-xl font-bold border-b-2 border-gold-400 focus:outline-none bg-transparent"
+                        autoFocus
+                      />
+                      <button onClick={saveTaskTitle} className="p-1 text-green-600 hover:bg-green-50 rounded">
+                        <Check size={18} />
+                      </button>
+                      <button onClick={() => setEditingTaskTitle(false)} className="p-1 text-gray-400 hover:bg-gray-100 rounded">
+                        <X size={18} />
+                      </button>
+                    </div>
+                  ) : (
+                    <h3
+                      onClick={() => { setTempTaskTitle(selectedTask.title); setEditingTaskTitle(true); }}
+                      className={`text-xl font-bold cursor-pointer hover:bg-white/50 rounded px-1 -mx-1 transition-colors ${selectedTask.completed ? 'line-through text-gray-500' : 'text-gray-800'}`}
+                      title="Click to edit title"
+                    >
+                      {selectedTask.title}
+                      <Pencil size={14} className="inline ml-2 opacity-0 group-hover:opacity-50" />
+                    </h3>
+                  )}
                   <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                     <span className="flex items-center gap-1">
                       <Calendar size={14} />
@@ -13883,7 +13976,7 @@ export const TasksView: React.FC = () => {
                   <button
                     onClick={() => toggleTaskComplete(selectedTask.id)}
                     className={`p-2 rounded-lg transition-colors ${
-                      selectedTask.completed ? 'bg-green-100 text-green-600' : 'bg-white text-gray-400 hover:text-gold-500'
+                      selectedTask.completed ? 'bg-green-100 text-green-600' : 'bg-white text-gray-400 hover:text-gray-500'
                     }`}
                   >
                     {selectedTask.completed ? <Check size={20} /> : <CheckSquare size={20} />}
@@ -13901,7 +13994,7 @@ export const TasksView: React.FC = () => {
                 onClick={() => setActiveDetailTab('details')}
                 className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeDetailTab === 'details'
-                    ? 'border-gold-500 text-gold-600'
+                    ? 'border-gold-500 text-gray-600 dark:text-gray-400'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -13914,7 +14007,7 @@ export const TasksView: React.FC = () => {
                 onClick={() => setActiveDetailTab('comments')}
                 className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeDetailTab === 'comments'
-                    ? 'border-gold-500 text-gold-600'
+                    ? 'border-gold-500 text-gray-600 dark:text-gray-400'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -13932,7 +14025,7 @@ export const TasksView: React.FC = () => {
                 onClick={() => setActiveDetailTab('activity')}
                 className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeDetailTab === 'activity'
-                    ? 'border-gold-500 text-gold-600'
+                    ? 'border-gold-500 text-gray-600 dark:text-gray-400'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -13952,13 +14045,13 @@ export const TasksView: React.FC = () => {
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                    <Timer size={16} className="text-blue-500" />
+                    <Timer size={16} className="text-gray-500" />
                     Time Tracking
                   </h4>
                   {selectedTask.timeTracking?.isRunning ? (
                     <button
                       onClick={() => stopTimer(selectedTask.id)}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors"
+                      className="flex items-center gap-2 px-3 py-1.5 bg-gray-400 dark:bg-gray-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors"
                     >
                       <StopCircle size={14} />
                       Stop
@@ -13966,7 +14059,7 @@ export const TasksView: React.FC = () => {
                   ) : (
                     <button
                       onClick={() => startTimer(selectedTask.id)}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
+                      className="flex items-center gap-2 px-3 py-1.5 bg-gold-500 text-white rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors"
                     >
                       <PlayIcon size={14} />
                       Start Timer
@@ -13977,7 +14070,7 @@ export const TasksView: React.FC = () => {
                 <div className="grid grid-cols-3 gap-4 mb-4">
                   {/* Current Time */}
                   <div className="text-center p-3 bg-white rounded-lg shadow-sm">
-                    <div className={`text-2xl font-bold ${selectedTask.timeTracking?.isRunning ? 'text-blue-600 animate-pulse' : 'text-gray-700'}`}>
+                    <div className={`text-2xl font-bold ${selectedTask.timeTracking?.isRunning ? 'text-gray-600 dark:text-gray-400 animate-pulse' : 'text-gray-700'}`}>
                       {formatTime(getRunningTime(selectedTask))}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">Time Logged</div>
@@ -14055,7 +14148,7 @@ export const TasksView: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                    <CheckSquare size={16} className="text-gold-500" />
+                    <CheckSquare size={16} className="text-gray-500" />
                     Subtasks
                     {selectedTask.subtasks && selectedTask.subtasks.length > 0 && (
                       <span className="text-xs text-gray-400 font-normal">
@@ -14070,7 +14163,7 @@ export const TasksView: React.FC = () => {
                       <div key={subtask.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 group">
                         <button
                           onClick={() => toggleSubtask(subtask.id)}
-                          className={subtask.completed ? 'text-green-500' : 'text-gray-300 hover:text-gold-500'}
+                          className={subtask.completed ? 'text-green-500' : 'text-gray-300 hover:text-gray-500'}
                         >
                           {subtask.completed ? <Check size={18} /> : <CheckSquare size={18} />}
                         </button>
@@ -14096,7 +14189,7 @@ export const TasksView: React.FC = () => {
                     onChange={(e) => setNewSubtaskTitle(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && addSubtask()}
                     placeholder="Add a subtask..."
-                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
                   />
                   <button
                     onClick={addSubtask}
@@ -14112,7 +14205,7 @@ export const TasksView: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                    <Link2 size={16} className="text-blue-500" />
+                    <Link2 size={16} className="text-gray-500" />
                     Links
                     {selectedTask.links && selectedTask.links.length > 0 && (
                       <span className="text-xs text-gray-400 font-normal">({selectedTask.links.length})</span>
@@ -14128,7 +14221,7 @@ export const TasksView: React.FC = () => {
                           href={link.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex-1 text-blue-600 hover:text-blue-700 hover:underline text-sm truncate"
+                          className="flex-1 text-gray-600 dark:text-gray-400 hover:text-blue-700 hover:underline text-sm truncate"
                         >
                           {link.title}
                         </a>
@@ -14150,7 +14243,7 @@ export const TasksView: React.FC = () => {
                     value={newLinkTitle}
                     onChange={(e) => setNewLinkTitle(e.target.value)}
                     placeholder="Link title..."
-                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
                   />
                   <input
                     type="text"
@@ -14158,12 +14251,12 @@ export const TasksView: React.FC = () => {
                     onChange={(e) => setNewLinkUrl(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && addLink()}
                     placeholder="URL..."
-                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
                   />
                   <button
                     onClick={addLink}
                     disabled={!newLinkTitle.trim() || !newLinkUrl.trim()}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 bg-gold-500 text-white rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Add
                   </button>
@@ -14173,7 +14266,7 @@ export const TasksView: React.FC = () => {
               {/* Dependencies Section */}
               <div className="bg-amber-50 dark:bg-amber-900/10 rounded-xl p-4 border border-amber-100 dark:border-amber-800">
                 <h4 className="font-semibold text-gray-800 dark:text-dark-text flex items-center gap-2 mb-3">
-                  <GitBranch size={16} className="text-amber-500" />
+                  <GitBranch size={16} className="text-gray-500" />
                   Dependencies
                 </h4>
 
@@ -14343,13 +14436,13 @@ export const TasksView: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                    <FileText size={16} className="text-purple-500" />
+                    <FileText size={16} className="text-gray-500" />
                     Notes
                   </h4>
                   {!editingNotes && selectedTask.notes && (
                     <button
                       onClick={() => setEditingNotes(true)}
-                      className="text-sm text-gold-600 hover:text-gold-700 flex items-center gap-1"
+                      className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 flex items-center gap-1"
                     >
                       <Pencil size={12} /> Edit
                     </button>
@@ -14361,7 +14454,7 @@ export const TasksView: React.FC = () => {
                       value={tempNotes}
                       onChange={(e) => setTempNotes(e.target.value)}
                       rows={4}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 resize-none"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border resize-none"
                       placeholder="Add notes about this task..."
                     />
                     <div className="flex justify-end gap-2">
@@ -14405,7 +14498,7 @@ export const TasksView: React.FC = () => {
                 {/* Comment Input */}
                 <div className="flex gap-3">
                   <div className="w-8 h-8 rounded-full bg-gold-100 flex items-center justify-center flex-shrink-0">
-                    <User size={16} className="text-gold-600" />
+                    <User size={16} className="text-gray-600 dark:text-gray-400" />
                   </div>
                   <div className="flex-1">
                     <textarea
@@ -14413,7 +14506,7 @@ export const TasksView: React.FC = () => {
                       onChange={(e) => setNewComment(e.target.value)}
                       placeholder="Write a comment..."
                       rows={3}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 resize-none text-sm"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border resize-none text-sm"
                     />
                     <div className="flex justify-end mt-2">
                       <button
@@ -14486,8 +14579,8 @@ export const TasksView: React.FC = () => {
                             'bg-gray-100'
                           }`}>
                             {activity.type === 'created' && <Plus size={14} className="text-green-600" />}
-                            {activity.type === 'completed' && <Check size={14} className="text-blue-600" />}
-                            {activity.type === 'comment_added' && <MessageSquare size={14} className="text-gold-600" />}
+                            {activity.type === 'completed' && <Check size={14} className="text-gray-600 dark:text-gray-400" />}
+                            {activity.type === 'comment_added' && <MessageSquare size={14} className="text-gray-600 dark:text-gray-400" />}
                             {activity.type === 'status_changed' && <Columns size={14} className="text-purple-600" />}
                             {activity.type === 'subtask_added' && <CheckSquare size={14} className="text-gray-600" />}
                             {activity.type === 'subtask_completed' && <Check size={14} className="text-teal-600" />}
@@ -14578,20 +14671,20 @@ export const TasksView: React.FC = () => {
                       placeholder="Project name..."
                       value={newProject.name}
                       onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white dark:bg-dark-card dark:text-dark-text"
+                      className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white dark:bg-dark-card dark:text-dark-text"
                     />
                     <textarea
                       placeholder="Description (optional)..."
                       value={newProject.description}
                       onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
                       rows={2}
-                      className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white dark:bg-dark-card dark:text-dark-text resize-none"
+                      className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white dark:bg-dark-card dark:text-dark-text resize-none"
                     />
                     <div className="flex items-center gap-3">
                       <select
                         value={newProject.clientId}
                         onChange={(e) => setNewProject({ ...newProject, clientId: e.target.value })}
-                        className="flex-1 px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white dark:bg-dark-card dark:text-dark-text"
+                        className="flex-1 px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white dark:bg-dark-card dark:text-dark-text"
                       >
                         <option value="">No client</option>
                         {clients.map(client => (
@@ -14601,7 +14694,7 @@ export const TasksView: React.FC = () => {
                       <select
                         value={newProject.status}
                         onChange={(e) => setNewProject({ ...newProject, status: e.target.value as any })}
-                        className="px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white dark:bg-dark-card dark:text-dark-text"
+                        className="px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white dark:bg-dark-card dark:text-dark-text"
                       >
                         <option value="active">Active</option>
                         <option value="on_hold">On Hold</option>
@@ -14781,6 +14874,8 @@ export const CalendarView: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<{ type: 'task' | 'event'; item: CalendarTask | CalendarEvent } | null>(null);
   const [editingNotes, setEditingNotes] = useState(false);
   const [tempNotes, setTempNotes] = useState('');
+  const [editingItemTitle, setEditingItemTitle] = useState(false);
+  const [tempItemTitle, setTempItemTitle] = useState('');
   const [newLinkTitle, setNewLinkTitle] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
@@ -14910,6 +15005,16 @@ export const CalendarView: React.FC = () => {
   const goToToday = () => {
     setCurrentDate(new Date());
     setSelectedDay(today);
+  };
+
+  // Handle double-click on a day to add task/event with pre-filled date
+  const handleDayDoubleClick = (dateStr: string) => {
+    setSelectedDay(dateStr);
+    // Pre-fill the date in both forms
+    setNewTask(prev => ({ ...prev, dueDate: dateStr }));
+    setNewEvent(prev => ({ ...prev, date: dateStr }));
+    // Show add task modal by default (most common action)
+    setShowAddTask(true);
   };
 
   // Get filtered data for a day
@@ -15103,6 +15208,25 @@ export const CalendarView: React.FC = () => {
   const closeItemDetail = () => {
     setSelectedItem(null);
     setEditingNotes(false);
+    setEditingItemTitle(false);
+  };
+
+  // Save item title
+  const saveItemTitle = () => {
+    if (!selectedItem || !tempItemTitle.trim()) return;
+
+    if (selectedItem.type === 'task') {
+      setTasks(tasks.map(t =>
+        t.id === selectedItem.item.id ? { ...t, title: tempItemTitle.trim() } : t
+      ));
+    } else {
+      setEvents(events.map(e =>
+        e.id === selectedItem.item.id ? { ...e, title: tempItemTitle.trim() } : e
+      ));
+    }
+    setSelectedItem({ ...selectedItem, item: { ...selectedItem.item, title: tempItemTitle.trim() } });
+    setEditingItemTitle(false);
+    showToast('success', `${selectedItem.type === 'task' ? 'Task' : 'Event'} title updated`);
   };
 
   // Update item notes
@@ -15235,24 +15359,24 @@ export const CalendarView: React.FC = () => {
 
   // Get priority color for cards
   const getPriorityColor = (priority: string, completed: boolean) => {
-    if (completed) return 'bg-gray-50 border-gray-200 text-gray-400';
+    if (completed) return 'bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30 text-gray-400';
     switch (priority) {
-      case 'high': return 'bg-red-50 border-red-300 border-l-red-500';
-      case 'medium': return 'bg-gold-50 border-gold-300 border-l-gold-500';
-      case 'low': return 'bg-blue-50 border-blue-300 border-l-blue-500';
-      default: return 'bg-gray-50 border-gray-200';
+      case 'high': return 'bg-red-50/70 dark:bg-red-900/10 border-red-100 dark:border-red-900/20 border-l-red-400';
+      case 'medium': return 'bg-amber-50/70 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/20 border-l-amber-400';
+      case 'low': return 'bg-blue-50/70 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/20 border-l-blue-400';
+      default: return 'bg-gray-50 border-gray-200 dark:bg-dark-elevated dark:border-dark-border';
     }
   };
 
   // Get event type colors
   const getEventTypeColor = (type: string) => {
     switch (type) {
-      case 'meeting': return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'deadline': return 'bg-red-100 text-red-700 border-red-200';
-      case 'review': return 'bg-purple-100 text-purple-700 border-purple-200';
-      case 'call': return 'bg-green-100 text-green-700 border-green-200';
-      case 'personal': return 'bg-gray-100 text-gray-700 border-gray-200';
-      default: return 'bg-gold-100 text-gold-700 border-gold-200';
+      case 'meeting': return 'bg-blue-50/70 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/20';
+      case 'deadline': return 'bg-red-50/70 dark:bg-red-900/10 text-red-500 dark:text-red-400 border-red-100 dark:border-red-900/20';
+      case 'review': return 'bg-purple-50/70 dark:bg-purple-900/10 text-purple-600 dark:text-purple-400 border-purple-100 dark:border-purple-900/20';
+      case 'call': return 'bg-green-50/70 dark:bg-green-900/10 text-green-600 dark:text-green-400 border-green-100 dark:border-green-900/20';
+      case 'personal': return 'bg-gray-50 dark:bg-dark-elevated text-gray-600 dark:text-gray-400 border-gray-200 dark:border-dark-border';
+      default: return 'bg-gray-50 dark:bg-dark-elevated text-gray-600 dark:text-gray-400 border-gray-200 dark:border-dark-border';
     }
   };
 
@@ -15305,7 +15429,7 @@ export const CalendarView: React.FC = () => {
             </button>
             <button
               onClick={goToToday}
-              className="px-3 py-1.5 text-sm font-medium text-gold-600 border border-gold-200 rounded-lg hover:bg-gold-50 transition-colors"
+              className="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 border border-gold-200 rounded-lg hover:bg-gold-50 transition-colors"
             >
               Today
             </button>
@@ -15316,7 +15440,7 @@ export const CalendarView: React.FC = () => {
             <select
               value={filterClient}
               onChange={(e) => setFilterClient(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white"
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white"
             >
               <option value="all">All Clients</option>
               <option value="">No Client (Personal)</option>
@@ -15328,7 +15452,7 @@ export const CalendarView: React.FC = () => {
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white"
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white"
             >
               <option value="all">All Types</option>
               <option value="tasks">Tasks Only</option>
@@ -15392,6 +15516,7 @@ export const CalendarView: React.FC = () => {
                   <div
                     key={idx}
                     onClick={() => setSelectedDay(dateStr)}
+                    onDoubleClick={() => handleDayDoubleClick(dateStr)}
                     onDragOver={(e) => handleDragOver(e, dateStr)}
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, dateStr)}
@@ -15400,6 +15525,7 @@ export const CalendarView: React.FC = () => {
                     } ${isSelected ? 'bg-gold-50 ring-2 ring-gold-400 ring-inset' : 'hover:bg-gray-50'} ${
                       isDragOver ? 'bg-gold-100 ring-2 ring-gold-400 ring-dashed' : ''
                     }`}
+                    title="Double-click to add task"
                   >
                     <div className={`text-sm font-medium mb-2 ${
                       isToday ? 'w-7 h-7 bg-gold-500 text-white rounded-full flex items-center justify-center' :
@@ -15475,14 +15601,17 @@ export const CalendarView: React.FC = () => {
               return (
                 <div
                   key={idx}
+                  onClick={() => setSelectedDay(dateStr)}
+                  onDoubleClick={() => handleDayDoubleClick(dateStr)}
                   onDragOver={(e) => handleDragOver(e, dateStr)}
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, dateStr)}
-                  className={`min-h-[500px] transition-colors ${isToday ? 'bg-gold-50/30' : ''} ${isDragOver ? 'bg-gold-100' : ''}`}
+                  className={`min-h-[500px] transition-colors cursor-pointer ${isToday ? 'bg-gold-50/30' : ''} ${isDragOver ? 'bg-gold-100' : ''}`}
+                  title="Double-click to add task"
                 >
                   <div className={`text-center py-3 border-b ${isToday ? 'border-gold-200 bg-gold-100/50' : 'border-gray-100 bg-gray-50'}`}>
                     <p className="text-xs text-gray-500">{weekDays[idx]}</p>
-                    <p className={`text-lg font-semibold ${isToday ? 'text-gold-600' : 'text-gray-700'}`}>{date.getDate()}</p>
+                    <p className={`text-lg font-semibold ${isToday ? 'text-gray-600 dark:text-gray-400' : 'text-gray-700'}`}>{date.getDate()}</p>
                   </div>
                   <div className="p-2 space-y-2">
                     {dayEvents.map(event => (
@@ -15533,7 +15662,7 @@ export const CalendarView: React.FC = () => {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleTaskComplete(task.id); }}
-                            className={task.completed ? 'text-green-500' : 'text-gray-300 hover:text-gold-500'}
+                            className={task.completed ? 'text-green-500' : 'text-gray-300 hover:text-gray-500'}
                           >
                             {task.completed ? <Check size={16} /> : <CheckSquare size={16} />}
                           </button>
@@ -15603,6 +15732,28 @@ export const CalendarView: React.FC = () => {
                       </div>
                       <p className="text-sm font-medium text-gray-600">Nothing scheduled</p>
                       <p className="text-xs text-gray-400 mt-1">Add a task or event to get started</p>
+                      <div className="flex gap-2 mt-4">
+                        <button
+                          onClick={() => {
+                            setNewTask(prev => ({ ...prev, dueDate: dateStr }));
+                            setShowAddTask(true);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-gold-500 text-white rounded-lg hover:bg-gold-600 transition-colors text-sm font-medium"
+                        >
+                          <Plus size={14} />
+                          Add Task
+                        </button>
+                        <button
+                          onClick={() => {
+                            setNewEvent(prev => ({ ...prev, date: dateStr }));
+                            setShowAddEvent(true);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+                        >
+                          <Plus size={14} />
+                          Add Event
+                        </button>
+                      </div>
                     </div>
                   );
                 }
@@ -15671,7 +15822,7 @@ export const CalendarView: React.FC = () => {
                               <div className="flex items-center gap-3">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); toggleTaskComplete(task.id); }}
-                                  className={task.completed ? 'text-green-500' : 'text-gray-300 hover:text-gold-500'}
+                                  className={task.completed ? 'text-green-500' : 'text-gray-300 hover:text-gray-500'}
                                 >
                                   {task.completed ? <Check size={18} /> : <CheckSquare size={18} />}
                                 </button>
@@ -15725,13 +15876,13 @@ export const CalendarView: React.FC = () => {
             <div className="flex gap-2">
               <button
                 onClick={() => { setShowAddTask(true); setNewTask({ ...newTask, dueDate: selectedDay }); }}
-                className="text-sm text-gray-600 hover:text-gold-600 flex items-center gap-1"
+                className="text-sm text-gray-600 hover:text-gray-600 dark:text-gray-400 flex items-center gap-1"
               >
                 <Plus size={14} /> Task
               </button>
               <button
                 onClick={() => { setShowAddEvent(true); setNewEvent({ ...newEvent, date: selectedDay }); }}
-                className="text-sm text-gold-600 hover:text-gold-700 flex items-center gap-1"
+                className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 flex items-center gap-1"
               >
                 <Plus size={14} /> Event
               </button>
@@ -15776,11 +15927,11 @@ export const CalendarView: React.FC = () => {
                 {dayTasks.map(task => (
                   <div key={task.id} className={`p-3 rounded-lg border flex items-center gap-3 group ${
                     task.completed ? 'bg-gray-50 border-gray-200' :
-                    task.priority === 'high' ? 'bg-red-50 border-red-200' : 'bg-gold-50 border-gold-200'
+                    task.priority === 'high' ? 'bg-gray-100 border-gray-300 dark:bg-dark-elevated dark:border-gray-600' : 'bg-gray-50 border-gray-200 dark:bg-dark-hover dark:border-gray-700'
                   }`}>
                     <button
                       onClick={() => toggleTaskComplete(task.id)}
-                      className={task.completed ? 'text-green-500' : 'text-gray-300 hover:text-gold-500'}
+                      className={task.completed ? 'text-green-500' : 'text-gray-300 hover:text-gray-500'}
                     >
                       {task.completed ? <Check size={16} /> : <CheckSquare size={16} />}
                     </button>
@@ -15833,8 +15984,8 @@ export const CalendarView: React.FC = () => {
                 {/* Title Section */}
                 <div className="px-6 py-6 border-b border-gray-100">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-gold-100 rounded-xl flex items-center justify-center">
-                      <CheckSquare size={24} className="text-gold-600" />
+                    <div className="w-12 h-12 bg-gray-100 dark:bg-dark-elevated rounded-xl flex items-center justify-center">
+                      <CheckSquare size={24} className="text-gray-600 dark:text-gray-400" />
                     </div>
                     <div className="flex-1">
                       <input
@@ -15864,7 +16015,7 @@ export const CalendarView: React.FC = () => {
                       <select
                         value={newTask.clientId}
                         onChange={(e) => setNewTask({ ...newTask, clientId: e.target.value })}
-                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white transition-colors"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white transition-colors"
                       >
                         <option value="">No client (Personal)</option>
                         {clients.map(client => (
@@ -15880,7 +16031,7 @@ export const CalendarView: React.FC = () => {
                         type="date"
                         value={newTask.dueDate}
                         onChange={(e) => { setNewTask({ ...newTask, dueDate: e.target.value }); setTaskErrors({ ...taskErrors, dueDate: '' }); }}
-                        className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 transition-colors ${taskErrors.dueDate ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
+                        className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border transition-colors ${taskErrors.dueDate ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
                       />
                       {taskErrors.dueDate && <p className="text-xs text-red-500 mt-1">{taskErrors.dueDate}</p>}
                     </div>
@@ -15894,7 +16045,7 @@ export const CalendarView: React.FC = () => {
                       <select
                         value={newTask.projectId}
                         onChange={(e) => setNewTask({ ...newTask, projectId: e.target.value })}
-                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white transition-colors"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white transition-colors"
                       >
                         <option value="">No project</option>
                         {projects.filter(p => p.status === 'active').map(project => (
@@ -15916,7 +16067,7 @@ export const CalendarView: React.FC = () => {
                             setNewTask({ ...newTask, blockedByIds: [...newTask.blockedByIds, e.target.value] });
                           }
                         }}
-                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white transition-colors"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white transition-colors"
                       >
                         <option value="">Select a task...</option>
                         {tasks.filter(t => !t.completed && !newTask.blockedByIds.includes(t.id)).map(task => (
@@ -15958,10 +16109,10 @@ export const CalendarView: React.FC = () => {
                       <button
                         key={p}
                         onClick={() => setNewTask({ ...newTask, priority: p })}
-                        className={`flex-1 px-4 py-3 text-sm font-medium rounded-lg transition-colors capitalize ${
+                        className={`flex-1 px-4 py-3 text-sm font-medium rounded-lg transition-colors capitalize border ${
                           newTask.priority === p
-                            ? p === 'high' ? 'bg-red-500 text-white' : p === 'medium' ? 'bg-gold-500 text-white' : 'bg-blue-500 text-white'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            ? 'bg-gray-100 dark:bg-dark-elevated text-gray-800 dark:text-gray-200 border-gold-500'
+                            : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-gray-400 border-transparent hover:bg-gray-200 dark:hover:bg-dark-hover'
                         }`}
                       >
                         {p}
@@ -15972,8 +16123,8 @@ export const CalendarView: React.FC = () => {
 
                 {/* Info Box */}
                 <div className="px-6 py-5">
-                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-                    <p className="text-sm text-blue-700">
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                    <p className="text-sm text-gray-600">
                       Tasks can be dragged to different dates on the calendar. Click on a task to add notes, subtasks, and links.
                     </p>
                   </div>
@@ -16033,7 +16184,7 @@ export const CalendarView: React.FC = () => {
                 <div className="px-6 py-6 border-b border-gray-100">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                      <Calendar size={24} className="text-blue-600" />
+                      <Calendar size={24} className="text-gray-600 dark:text-gray-400" />
                     </div>
                     <div className="flex-1">
                       <input
@@ -16068,9 +16219,9 @@ export const CalendarView: React.FC = () => {
                         onClick={() => setNewEvent({ ...newEvent, type: t.value })}
                         className={`px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${
                           newEvent.type === t.value
-                            ? t.color === 'blue' ? 'bg-blue-500 text-white'
-                            : t.color === 'green' ? 'bg-green-500 text-white'
-                            : t.color === 'red' ? 'bg-red-500 text-white'
+                            ? t.color === 'blue' ? 'bg-gold-500 text-white'
+                            : t.color === 'green' ? 'bg-gray-600 dark:bg-gray-400 text-white dark:text-gray-800'
+                            : t.color === 'red' ? 'bg-gray-400 dark:bg-gray-500 text-white'
                             : t.color === 'purple' ? 'bg-purple-500 text-white'
                             : 'bg-gray-500 text-white'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -16096,7 +16247,7 @@ export const CalendarView: React.FC = () => {
                       <select
                         value={newEvent.clientId}
                         onChange={(e) => setNewEvent({ ...newEvent, clientId: e.target.value })}
-                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white transition-colors"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border bg-white transition-colors"
                       >
                         <option value="">No client (Personal)</option>
                         {clients.map(client => (
@@ -16112,7 +16263,7 @@ export const CalendarView: React.FC = () => {
                         type="date"
                         value={newEvent.date}
                         onChange={(e) => { setNewEvent({ ...newEvent, date: e.target.value }); setEventErrors({ ...eventErrors, date: '' }); }}
-                        className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 transition-colors ${eventErrors.date ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
+                        className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border transition-colors ${eventErrors.date ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
                       />
                       {eventErrors.date && <p className="text-xs text-red-500 mt-1">{eventErrors.date}</p>}
                     </div>
@@ -16125,7 +16276,7 @@ export const CalendarView: React.FC = () => {
                           type="time"
                           value={newEvent.time}
                           onChange={(e) => { setNewEvent({ ...newEvent, time: e.target.value }); setEventErrors({ ...eventErrors, time: '' }); }}
-                          className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 transition-colors ${eventErrors.time ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
+                          className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border transition-colors ${eventErrors.time ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
                         />
                         {eventErrors.time && <p className="text-xs text-red-500 mt-1">{eventErrors.time}</p>}
                       </div>
@@ -16137,7 +16288,7 @@ export const CalendarView: React.FC = () => {
                           type="time"
                           value={newEvent.endTime}
                           onChange={(e) => { setNewEvent({ ...newEvent, endTime: e.target.value }); setEventErrors({ ...eventErrors, endTime: '' }); }}
-                          className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 transition-colors ${eventErrors.endTime ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
+                          className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border transition-colors ${eventErrors.endTime ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
                         />
                         {eventErrors.endTime && <p className="text-xs text-red-500 mt-1">{eventErrors.endTime}</p>}
                       </div>
@@ -16155,7 +16306,7 @@ export const CalendarView: React.FC = () => {
                     value={newEvent.description}
                     onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
                     rows={3}
-                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 resize-none transition-colors"
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border resize-none transition-colors"
                     placeholder="Add notes or details about this event..."
                   />
                 </div>
@@ -16189,8 +16340,8 @@ export const CalendarView: React.FC = () => {
             {/* Header */}
             <div className={`p-6 border-b ${
               selectedItem.type === 'task'
-                ? (selectedItem.item as CalendarTask).priority === 'high' ? 'bg-red-50 border-red-100' :
-                  (selectedItem.item as CalendarTask).priority === 'medium' ? 'bg-gold-50 border-gold-100' :
+                ? (selectedItem.item as CalendarTask).priority === 'high' ? 'bg-gray-100 border-gray-300 dark:bg-dark-elevated dark:border-gray-600' :
+                  (selectedItem.item as CalendarTask).priority === 'medium' ? 'bg-gray-50 border-gray-200 dark:bg-dark-hover dark:border-gray-700' :
                   'bg-blue-50 border-blue-100'
                 : (selectedItem.item as CalendarEvent).type === 'meeting' ? 'bg-blue-50 border-blue-100' :
                   (selectedItem.item as CalendarEvent).type === 'deadline' ? 'bg-red-50 border-red-100' :
@@ -16201,14 +16352,14 @@ export const CalendarView: React.FC = () => {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                      selectedItem.type === 'task' ? 'bg-gold-100 text-gold-700' : 'bg-blue-100 text-blue-700'
+                      selectedItem.type === 'task' ? 'bg-gold-100 text-gray-700 dark:text-gray-300' : 'bg-blue-100 text-blue-700'
                     }`}>
                       {selectedItem.type === 'task' ? 'Task' : 'Event'}
                     </span>
                     {selectedItem.type === 'task' && (
                       <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                        (selectedItem.item as CalendarTask).priority === 'high' ? 'bg-red-100 text-red-700' :
-                        (selectedItem.item as CalendarTask).priority === 'medium' ? 'bg-gold-100 text-gold-700' :
+                        (selectedItem.item as CalendarTask).priority === 'high' ? 'bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800' :
+                        (selectedItem.item as CalendarTask).priority === 'medium' ? 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300' :
                         'bg-blue-100 text-blue-700'
                       }`}>
                         {(selectedItem.item as CalendarTask).priority} priority
@@ -16220,7 +16371,35 @@ export const CalendarView: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  <h3 className="text-xl font-bold text-gray-800">{selectedItem.item.title}</h3>
+                  {editingItemTitle ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={tempItemTitle}
+                        onChange={(e) => setTempItemTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveItemTitle();
+                          if (e.key === 'Escape') setEditingItemTitle(false);
+                        }}
+                        className="flex-1 text-xl font-bold border-b-2 border-gold-400 focus:outline-none bg-transparent"
+                        autoFocus
+                      />
+                      <button onClick={saveItemTitle} className="p-1 text-green-600 hover:bg-green-50 rounded">
+                        <Check size={18} />
+                      </button>
+                      <button onClick={() => setEditingItemTitle(false)} className="p-1 text-gray-400 hover:bg-gray-100 rounded">
+                        <X size={18} />
+                      </button>
+                    </div>
+                  ) : (
+                    <h3
+                      onClick={() => { setTempItemTitle(selectedItem.item.title); setEditingItemTitle(true); }}
+                      className="text-xl font-bold text-gray-800 cursor-pointer hover:bg-gray-100 rounded px-1 -mx-1 transition-colors"
+                      title="Click to edit title"
+                    >
+                      {selectedItem.item.title}
+                    </h3>
+                  )}
                   <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                     <span className="flex items-center gap-1">
                       <Calendar size={14} />
@@ -16262,7 +16441,7 @@ export const CalendarView: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                    <CheckSquare size={16} className="text-gold-500" />
+                    <CheckSquare size={16} className="text-gray-500" />
                     Subtasks
                     {selectedItem.item.subtasks && selectedItem.item.subtasks.length > 0 && (
                       <span className="text-xs text-gray-400 font-normal">
@@ -16277,7 +16456,7 @@ export const CalendarView: React.FC = () => {
                       <div key={subtask.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 group">
                         <button
                           onClick={() => toggleSubtask(subtask.id)}
-                          className={subtask.completed ? 'text-green-500' : 'text-gray-300 hover:text-gold-500'}
+                          className={subtask.completed ? 'text-green-500' : 'text-gray-300 hover:text-gray-500'}
                         >
                           {subtask.completed ? <Check size={18} /> : <CheckSquare size={18} />}
                         </button>
@@ -16303,7 +16482,7 @@ export const CalendarView: React.FC = () => {
                     onChange={(e) => setNewSubtaskTitle(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && addSubtask()}
                     placeholder="Add a subtask..."
-                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
                   />
                   <button
                     onClick={addSubtask}
@@ -16319,7 +16498,7 @@ export const CalendarView: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                    <Link2 size={16} className="text-blue-500" />
+                    <Link2 size={16} className="text-gray-500" />
                     Links
                     {selectedItem.item.links && selectedItem.item.links.length > 0 && (
                       <span className="text-xs text-gray-400 font-normal">({selectedItem.item.links.length})</span>
@@ -16335,7 +16514,7 @@ export const CalendarView: React.FC = () => {
                           href={link.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex-1 text-blue-600 hover:text-blue-700 hover:underline text-sm truncate"
+                          className="flex-1 text-gray-600 dark:text-gray-400 hover:text-blue-700 hover:underline text-sm truncate"
                         >
                           {link.title}
                         </a>
@@ -16357,7 +16536,7 @@ export const CalendarView: React.FC = () => {
                     value={newLinkTitle}
                     onChange={(e) => setNewLinkTitle(e.target.value)}
                     placeholder="Link title..."
-                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
                   />
                   <input
                     type="text"
@@ -16365,12 +16544,12 @@ export const CalendarView: React.FC = () => {
                     onChange={(e) => setNewLinkUrl(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && addLink()}
                     placeholder="URL..."
-                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400"
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border"
                   />
                   <button
                     onClick={addLink}
                     disabled={!newLinkTitle.trim() || !newLinkUrl.trim()}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 bg-gold-500 text-white rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Add
                   </button>
@@ -16381,13 +16560,13 @@ export const CalendarView: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                    <FileText size={16} className="text-purple-500" />
+                    <FileText size={16} className="text-gray-500" />
                     Notes
                   </h4>
                   {!editingNotes && selectedItem.item.notes && (
                     <button
                       onClick={() => setEditingNotes(true)}
-                      className="text-sm text-gold-600 hover:text-gold-700 flex items-center gap-1"
+                      className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 flex items-center gap-1"
                     >
                       <Pencil size={12} /> Edit
                     </button>
@@ -16399,7 +16578,7 @@ export const CalendarView: React.FC = () => {
                       value={tempNotes}
                       onChange={(e) => setTempNotes(e.target.value)}
                       rows={4}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 resize-none"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border resize-none"
                       placeholder="Add notes about this item..."
                     />
                     <div className="flex justify-end gap-2">
@@ -16851,7 +17030,7 @@ export const ClientWorkView: React.FC = () => {
   const getStatusStyle = (status: string) => {
     switch (status) {
       case 'live': return 'bg-green-50 text-green-600';
-      case 'development': return 'bg-blue-50 text-blue-600';
+      case 'development': return 'bg-blue-50 text-gray-600 dark:text-gray-400';
       default: return 'bg-yellow-50 text-yellow-600';
     }
   };
@@ -16886,11 +17065,11 @@ export const ClientWorkView: React.FC = () => {
               >
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-12 h-12 bg-gold-50 border border-gold-200 rounded-full flex items-center justify-center">
-                    <span className="text-gold-700 font-semibold text-lg">{client.name.charAt(0)}</span>
+                    <span className="text-gray-700 dark:text-gray-300 font-semibold text-lg">{client.name.charAt(0)}</span>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-800 group-hover:text-gold-700">{client.name}</h3>
-                    <p className="text-sm text-gray-400">{client.company}</p>
+                    <h3 className="font-semibold text-gray-800 group-hover:text-gray-700 dark:text-gray-300">{client.name}</h3>
+                    <p className="text-sm text-gray-500 dark:text-dark-muted">{client.company}</p>
                   </div>
                 </div>
 
@@ -16916,7 +17095,7 @@ export const ClientWorkView: React.FC = () => {
                 </div>
 
                 <div className="mt-4 pt-4 border-t border-gray-100">
-                  <span className="text-gold-600 text-sm font-medium group-hover:text-gold-700">
+                  <span className="text-gray-600 dark:text-gray-400 text-sm font-medium group-hover:text-gray-700 dark:text-gray-300">
                     Open Portal →
                   </span>
                 </div>
@@ -16941,11 +17120,11 @@ export const ClientWorkView: React.FC = () => {
             <X size={20} className="text-gray-400" />
           </button>
           <div className="w-12 h-12 bg-gold-50 border border-gold-200 rounded-full flex items-center justify-center">
-            <span className="text-gold-700 font-semibold text-lg">{selectedClient.name.charAt(0)}</span>
+            <span className="text-gray-700 dark:text-gray-300 font-semibold text-lg">{selectedClient.name.charAt(0)}</span>
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-gray-800">{selectedClient.name}</h2>
-            <p className="text-sm text-gray-400">{selectedClient.email}</p>
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-dark-text">{selectedClient.name}</h2>
+            <p className="text-sm text-gray-500 dark:text-dark-muted">{selectedClient.email}</p>
           </div>
         </div>
         <button
@@ -17074,25 +17253,25 @@ export const ClientWorkView: React.FC = () => {
                   value={newEvent.title}
                   onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
                   placeholder="Event title..."
-                  className="flex-1 min-w-[180px] border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-gold-400 focus:border-gold-400 outline-none"
+                  className="flex-1 min-w-[180px] border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border outline-none"
                   autoFocus
                 />
                 <input
                   type="date"
                   value={newEvent.date}
                   onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
-                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-gold-400 focus:border-gold-400 outline-none"
+                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border outline-none"
                 />
                 <input
                   type="time"
                   value={newEvent.time}
                   onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
-                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-gold-400 focus:border-gold-400 outline-none"
+                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border outline-none"
                 />
                 <select
                   value={newEvent.type}
                   onChange={(e) => setNewEvent({ ...newEvent, type: e.target.value as 'meeting' | 'deadline' | 'review' })}
-                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-gold-400 focus:border-gold-400 outline-none bg-white"
+                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border outline-none bg-white"
                 >
                   <option value="meeting">Meeting</option>
                   <option value="deadline">Deadline</option>
@@ -17124,7 +17303,7 @@ export const ClientWorkView: React.FC = () => {
                     event.type === 'deadline' ? 'bg-red-100' : 'bg-amber-100'
                   }`}>
                     <Calendar size={18} className={
-                      event.type === 'meeting' ? 'text-blue-600' :
+                      event.type === 'meeting' ? 'text-gray-600 dark:text-gray-400' :
                       event.type === 'deadline' ? 'text-red-600' : 'text-amber-600'
                     } />
                   </div>
@@ -17186,7 +17365,7 @@ export const ClientWorkView: React.FC = () => {
                     value={newWebsite.name}
                     onChange={(e) => setNewWebsite({ ...newWebsite, name: e.target.value })}
                     placeholder="Website name..."
-                    className="flex-1 min-w-[150px] border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-gold-400 focus:border-gold-400 outline-none"
+                    className="flex-1 min-w-[150px] border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border outline-none"
                     autoFocus
                   />
                   <input
@@ -17194,12 +17373,12 @@ export const ClientWorkView: React.FC = () => {
                     value={newWebsite.url}
                     onChange={(e) => setNewWebsite({ ...newWebsite, url: e.target.value })}
                     placeholder="example.com"
-                    className="flex-1 min-w-[150px] border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-gold-400 focus:border-gold-400 outline-none"
+                    className="flex-1 min-w-[150px] border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border outline-none"
                   />
                   <select
                     value={newWebsite.status}
                     onChange={(e) => setNewWebsite({ ...newWebsite, status: e.target.value as 'live' | 'development' | 'maintenance' })}
-                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-gold-400 focus:border-gold-400 outline-none bg-white"
+                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border outline-none bg-white"
                   >
                     <option value="development">Development</option>
                     <option value="live">Live</option>
@@ -17228,7 +17407,7 @@ export const ClientWorkView: React.FC = () => {
                         />
                         <button
                           onClick={() => setNewWebsite({ ...newWebsite, thumbnail: '' })}
-                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                          className="absolute -top-2 -right-2 w-6 h-6 bg-gray-400 dark:bg-gray-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
                         >
                           <X size={14} />
                         </button>
@@ -17292,7 +17471,7 @@ export const ClientWorkView: React.FC = () => {
                       </a>
                       <button
                         onClick={() => setEditingWebsite({ ...website })}
-                        className="px-2.5 py-1.5 bg-gold-50 text-gold-700 rounded-lg text-xs font-medium hover:bg-gold-100 transition-colors"
+                        className="px-2.5 py-1.5 bg-gold-50 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-medium hover:bg-gold-100 transition-colors"
                       >
                         <Edit3 size={13} />
                       </button>
@@ -17313,8 +17492,8 @@ export const ClientWorkView: React.FC = () => {
 
             {/* Edit Website Modal */}
             {editingWebsite && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setEditingWebsite(null)}>
-                <div className="bg-white rounded-2xl w-full max-w-xl p-6" onClick={(e) => e.stopPropagation()}>
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setEditingWebsite(null)}>
+                <div className="bg-white dark:bg-dark-card rounded-2xl w-full max-w-xl p-6" onClick={(e) => e.stopPropagation()}>
                   <div className="flex justify-between items-center mb-6">
                     <h2 className="text-lg font-semibold text-gray-800">Edit Website</h2>
                     <button onClick={() => setEditingWebsite(null)} className="text-gray-400 hover:text-gray-600">
@@ -17328,7 +17507,7 @@ export const ClientWorkView: React.FC = () => {
                         type="text"
                         value={editingWebsite.name}
                         onChange={(e) => setEditingWebsite({ ...editingWebsite, name: e.target.value })}
-                        className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-1 focus:ring-gold-400 focus:border-gold-400 outline-none"
+                        className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-1 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border outline-none"
                       />
                     </div>
                     <div>
@@ -17337,7 +17516,7 @@ export const ClientWorkView: React.FC = () => {
                         type="text"
                         value={editingWebsite.url}
                         onChange={(e) => setEditingWebsite({ ...editingWebsite, url: e.target.value })}
-                        className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-1 focus:ring-gold-400 focus:border-gold-400 outline-none"
+                        className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-1 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border outline-none"
                       />
                     </div>
                     <div>
@@ -17345,7 +17524,7 @@ export const ClientWorkView: React.FC = () => {
                       <select
                         value={editingWebsite.status}
                         onChange={(e) => setEditingWebsite({ ...editingWebsite, status: e.target.value as 'live' | 'development' | 'maintenance' })}
-                        className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-1 focus:ring-gold-400 focus:border-gold-400 outline-none bg-white"
+                        className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-1 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border outline-none bg-white"
                       >
                         <option value="development">Development</option>
                         <option value="live">Live</option>
@@ -17374,7 +17553,7 @@ export const ClientWorkView: React.FC = () => {
                             />
                             <button
                               onClick={() => setEditingWebsite({ ...editingWebsite, thumbnail: '' })}
-                              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                              className="absolute -top-2 -right-2 w-6 h-6 bg-gray-400 dark:bg-gray-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
                             >
                               <X size={14} />
                             </button>
@@ -17412,7 +17591,7 @@ export const ClientWorkView: React.FC = () => {
               onChange={(e) => updateNotes(e.target.value)}
               placeholder="Add notes about this client..."
               rows={10}
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-gold-400 focus:border-gold-400 outline-none resize-none"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border outline-none resize-none"
             />
             <p className="text-xs text-gray-400">Notes are saved automatically.</p>
           </div>
@@ -17450,8 +17629,8 @@ export const ClientWorkView: React.FC = () => {
                 {/* Title Section */}
                 <div className="px-6 py-6 border-b border-gray-100">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-gold-100 rounded-xl flex items-center justify-center">
-                      <CheckSquare size={24} className="text-gold-600" />
+                    <div className="w-12 h-12 bg-gray-100 dark:bg-dark-elevated rounded-xl flex items-center justify-center">
+                      <CheckSquare size={24} className="text-gray-600 dark:text-gray-400" />
                     </div>
                     <div className="flex-1">
                       <input
@@ -17489,7 +17668,7 @@ export const ClientWorkView: React.FC = () => {
                         type="date"
                         value={newTask.dueDate}
                         onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
-                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 transition-colors"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border transition-colors"
                       />
                     </div>
                   </div>
@@ -17506,10 +17685,10 @@ export const ClientWorkView: React.FC = () => {
                       <button
                         key={p}
                         onClick={() => setNewTask({ ...newTask, priority: p })}
-                        className={`flex-1 px-4 py-3 text-sm font-medium rounded-lg transition-colors capitalize ${
+                        className={`flex-1 px-4 py-3 text-sm font-medium rounded-lg transition-colors capitalize border ${
                           newTask.priority === p
-                            ? p === 'high' ? 'bg-red-500 text-white' : p === 'medium' ? 'bg-gold-500 text-white' : 'bg-blue-500 text-white'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            ? 'bg-gray-100 dark:bg-dark-elevated text-gray-800 dark:text-gray-200 border-gold-500'
+                            : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-gray-400 border-transparent hover:bg-gray-200 dark:hover:bg-dark-hover'
                         }`}
                       >
                         {p}
@@ -17520,8 +17699,8 @@ export const ClientWorkView: React.FC = () => {
 
                 {/* Info Box */}
                 <div className="px-6 py-5">
-                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-                    <p className="text-sm text-blue-700">
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                    <p className="text-sm text-gray-600">
                       Tasks will appear in your calendar and can be tracked across the dashboard, tasks view, and client work sections.
                     </p>
                   </div>
@@ -17559,8 +17738,8 @@ export const ClientWorkView: React.FC = () => {
               <div className="p-6 border-b border-gray-100">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gold-100 rounded-xl flex items-center justify-center">
-                      <Layers size={20} className="text-gold-600" />
+                    <div className="w-10 h-10 bg-gray-100 dark:bg-dark-elevated rounded-xl flex items-center justify-center">
+                      <Layers size={20} className="text-gray-600 dark:text-gray-400" />
                     </div>
                     <div>
                       <h3 className="font-semibold text-gray-800">Save as Snapshot</h3>
@@ -17584,7 +17763,7 @@ export const ClientWorkView: React.FC = () => {
                     value={snapshotForm.name}
                     onChange={(e) => setSnapshotForm({ ...snapshotForm, name: e.target.value })}
                     placeholder="e.g., Restaurant Complete Setup"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold-400 focus:border-gold-400 outline-none"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border outline-none"
                     autoFocus
                   />
                 </div>
@@ -17594,7 +17773,7 @@ export const ClientWorkView: React.FC = () => {
                   <select
                     value={snapshotForm.industry}
                     onChange={(e) => setSnapshotForm({ ...snapshotForm, industry: e.target.value as SnapshotIndustry })}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold-400 focus:border-gold-400 outline-none bg-white"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border outline-none bg-white"
                   >
                     {SNAPSHOT_INDUSTRIES.map(ind => (
                       <option key={ind.id} value={ind.id}>{ind.icon} {ind.name}</option>
@@ -17609,7 +17788,7 @@ export const ClientWorkView: React.FC = () => {
                     onChange={(e) => setSnapshotForm({ ...snapshotForm, description: e.target.value })}
                     placeholder="Describe what's included in this snapshot..."
                     rows={3}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold-400 focus:border-gold-400 outline-none resize-none"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gray-400 focus:border-gray-400 dark:bg-dark-elevated dark:text-dark-text dark:border-dark-border outline-none resize-none"
                   />
                 </div>
 
@@ -17905,11 +18084,11 @@ export const SettingsView: React.FC = () => {
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors ${
               activeTab === tab.id
-                ? 'bg-gold-50 dark:bg-gold-900/20 text-gold-700 dark:text-gold-400 border border-gold-200 dark:border-gold-800'
+                ? 'bg-gray-100 dark:bg-dark-elevated text-gray-800 dark:text-gray-200 border border-gold-200 dark:border-gold-800'
                 : 'text-gray-600 dark:text-dark-muted hover:bg-gray-50 dark:hover:bg-dark-elevated'
             }`}
           >
-            <span className={activeTab === tab.id ? 'text-gold-600 dark:text-gold-400' : 'text-gray-400 dark:text-dark-subtle'}>{tab.icon}</span>
+            <span className={activeTab === tab.id ? 'text-gray-600 dark:text-gray-400 dark:text-gold-400' : 'text-gray-400 dark:text-dark-subtle'}>{tab.icon}</span>
             {tab.label}
           </button>
         ))}
@@ -17926,7 +18105,7 @@ export const SettingsView: React.FC = () => {
           {/* Avatar */}
           <div className="flex items-center gap-6">
             <div className="w-20 h-20 rounded-full bg-gold-100 dark:bg-gold-900/30 border-2 border-gold-300 dark:border-gold-700 flex items-center justify-center">
-              <span className="text-2xl font-semibold text-gold-700 dark:text-gold-400">{settings.profile.avatarInitials}</span>
+              <span className="text-2xl font-semibold text-gray-700 dark:text-gray-300 dark:text-gold-400">{settings.profile.avatarInitials}</span>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">Avatar Initials</label>
@@ -18243,7 +18422,7 @@ export const SettingsView: React.FC = () => {
                         onClick={() => setNewFieldType(item.type)}
                         className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
                           newFieldType === item.type
-                            ? 'border-gold-500 bg-gold-50 dark:bg-gold-900/20 text-gold-700 dark:text-gold-400'
+                            ? 'border-gold-500 bg-gray-100 dark:bg-dark-elevated text-gray-800 dark:text-gray-200'
                             : 'border-gray-200 dark:border-dark-border text-gray-600 dark:text-dark-muted hover:bg-gray-50 dark:hover:bg-dark-elevated'
                         }`}
                       >
@@ -18279,7 +18458,7 @@ export const SettingsView: React.FC = () => {
                       ))}
                       <button
                         onClick={addDropdownOption}
-                        className="w-full px-3 py-2 border border-dashed border-gray-300 dark:border-dark-border rounded-lg text-sm text-gray-500 dark:text-dark-muted hover:border-gold-400 hover:text-gold-600 dark:hover:text-gold-400 transition-colors flex items-center justify-center gap-2"
+                        className="w-full px-3 py-2 border border-dashed border-gray-300 dark:border-dark-border rounded-lg text-sm text-gray-500 dark:text-dark-muted hover:border-gold-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gold-400 transition-colors flex items-center justify-center gap-2"
                       >
                         <Plus size={14} />
                         Add Option
@@ -18302,7 +18481,7 @@ export const SettingsView: React.FC = () => {
                         onClick={() => setNewFieldEntityType(item.value)}
                         className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-colors ${
                           newFieldEntityType === item.value
-                            ? 'border-gold-500 bg-gold-50 dark:bg-gold-900/20 text-gold-700 dark:text-gold-400'
+                            ? 'border-gold-500 bg-gray-100 dark:bg-dark-elevated text-gray-800 dark:text-gray-200'
                             : 'border-gray-200 dark:border-dark-border text-gray-600 dark:text-dark-muted hover:bg-gray-50 dark:hover:bg-dark-elevated'
                         }`}
                       >
@@ -18384,7 +18563,7 @@ export const SettingsView: React.FC = () => {
           <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-8">
             <div className="flex items-start gap-4">
               <div className="p-3 bg-gold-50 dark:bg-gold-900/20 rounded-xl">
-                <Download size={24} className="text-gold-600 dark:text-gold-400" />
+                <Download size={24} className="text-gray-600 dark:text-gray-400 dark:text-gold-400" />
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-dark-text mb-1">Export All Data</h3>
@@ -18406,14 +18585,14 @@ export const SettingsView: React.FC = () => {
           <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-8">
             <div className="flex items-start gap-4">
               <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
-                <Upload size={24} className="text-blue-600 dark:text-blue-400" />
+                <Upload size={24} className="text-gray-600 dark:text-gray-400 dark:text-blue-400" />
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-dark-text mb-1">Import Data</h3>
                 <p className="text-sm text-gray-500 dark:text-dark-muted mb-4">
                   Restore data from a previously exported backup file.
                 </p>
-                <label className="px-6 py-2.5 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 transition-colors inline-flex items-center gap-2 cursor-pointer">
+                <label className="px-6 py-2.5 bg-gold-500 text-white rounded-xl font-medium hover:bg-gold-600 transition-colors inline-flex items-center gap-2 cursor-pointer">
                   <Upload size={18} />
                   Import Backup
                   <input
@@ -18470,7 +18649,7 @@ export const SettingsView: React.FC = () => {
                 </p>
                 <button
                   onClick={() => setShowClearDataConfirm(true)}
-                  className="px-6 py-2.5 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors inline-flex items-center gap-2"
+                  className="px-6 py-2.5 bg-gray-400 dark:bg-gray-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors inline-flex items-center gap-2"
                 >
                   <Trash2 size={18} />
                   Clear All Data
@@ -18843,25 +19022,25 @@ export const AnalyticsView: React.FC = () => {
               label="Monthly Revenue"
               value={`£${revenueAnalytics.monthlyRevenue.toLocaleString()}`}
               subValue={`${revenueAnalytics.activeCount} active clients`}
-              icon={<PoundSterling size={20} className="text-gold-600 dark:text-gold-400" />}
+              icon={<PoundSterling size={20} className="text-gray-600 dark:text-gray-400 dark:text-gold-400" />}
             />
             <StatCard
               label="Yearly Revenue"
               value={`£${revenueAnalytics.yearlyRevenue.toLocaleString()}`}
               subValue="Projected annual"
-              icon={<TrendingUp size={20} className="text-gold-600 dark:text-gold-400" />}
+              icon={<TrendingUp size={20} className="text-gray-600 dark:text-gray-400 dark:text-gold-400" />}
             />
             <StatCard
               label="Avg per Client"
               value={`£${Math.round(revenueAnalytics.avgRevenue).toLocaleString()}`}
               subValue="Monthly average"
-              icon={<Users size={20} className="text-gold-600 dark:text-gold-400" />}
+              icon={<Users size={20} className="text-gray-600 dark:text-gray-400 dark:text-gold-400" />}
             />
             <StatCard
               label="Active Clients"
               value={revenueAnalytics.activeCount}
               subValue={`${revenueAnalytics.pausedCount} paused, ${revenueAnalytics.cancelledCount} cancelled`}
-              icon={<CheckSquare size={20} className="text-gold-600 dark:text-gold-400" />}
+              icon={<CheckSquare size={20} className="text-gray-600 dark:text-gray-400 dark:text-gold-400" />}
             />
           </div>
 
@@ -18934,7 +19113,7 @@ export const AnalyticsView: React.FC = () => {
             <StatCard
               label="Total Clients"
               value={clientAnalytics.total}
-              icon={<Users size={20} className="text-gold-600 dark:text-gold-400" />}
+              icon={<Users size={20} className="text-gray-600 dark:text-gray-400 dark:text-gold-400" />}
             />
             <StatCard
               label="Active Clients"
@@ -18946,7 +19125,7 @@ export const AnalyticsView: React.FC = () => {
               label="Retention Rate"
               value={`${Math.round(clientAnalytics.retentionRate)}%`}
               subValue="Active + Paused clients"
-              icon={<TrendingUp size={20} className="text-blue-600 dark:text-blue-400" />}
+              icon={<TrendingUp size={20} className="text-gray-600 dark:text-gray-400 dark:text-blue-400" />}
             />
             <StatCard
               label="Cancelled"
@@ -19005,14 +19184,14 @@ export const AnalyticsView: React.FC = () => {
             <div className="grid grid-cols-2 gap-8">
               <div className="text-center">
                 <div className="w-24 h-24 mx-auto bg-gold-100 dark:bg-gold-900/30 rounded-full flex items-center justify-center mb-4">
-                  <span className="text-2xl font-bold text-gold-600 dark:text-gold-400">{clientAnalytics.monthly}</span>
+                  <span className="text-2xl font-bold text-gray-600 dark:text-gray-400 dark:text-gold-400">{clientAnalytics.monthly}</span>
                 </div>
                 <p className="font-medium text-gray-700 dark:text-dark-text">Monthly</p>
                 <p className="text-sm text-gray-500 dark:text-dark-muted">{Math.round((clientAnalytics.monthly / (clientAnalytics.total || 1)) * 100)}%</p>
               </div>
               <div className="text-center">
                 <div className="w-24 h-24 mx-auto bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-4">
-                  <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">{clientAnalytics.annual}</span>
+                  <span className="text-2xl font-bold text-gray-600 dark:text-gray-400 dark:text-blue-400">{clientAnalytics.annual}</span>
                 </div>
                 <p className="font-medium text-gray-700 dark:text-dark-text">Annual</p>
                 <p className="text-sm text-gray-500 dark:text-dark-muted">{Math.round((clientAnalytics.annual / (clientAnalytics.total || 1)) * 100)}%</p>
@@ -19030,36 +19209,36 @@ export const AnalyticsView: React.FC = () => {
               label="Total Pipeline Value"
               value={`£${pipelineAnalytics.totalValue.toLocaleString()}`}
               subValue={`${pipelineAnalytics.totalContacts} contacts`}
-              icon={<TrendingUp size={20} className="text-gold-600 dark:text-gold-400" />}
+              icon={<TrendingUp size={20} className="text-gray-600 dark:text-gray-400" />}
             />
             <StatCard
               label="Avg Deal Value"
               value={`£${Math.round(pipelineAnalytics.avgDealValue).toLocaleString()}`}
-              icon={<PoundSterling size={20} className="text-blue-600 dark:text-blue-400" />}
+              icon={<PoundSterling size={20} className="text-gray-600 dark:text-gray-400" />}
             />
             <StatCard
               label="Conversion Rate"
               value={`${Math.round(pipelineAnalytics.conversionRate)}%`}
               subValue={`${pipelineAnalytics.wonDeals} won / ${pipelineAnalytics.wonDeals + pipelineAnalytics.lostDeals} closed`}
-              icon={<Trophy size={20} className="text-green-600 dark:text-green-400" />}
+              icon={<Trophy size={20} className="text-gray-600 dark:text-gray-400" />}
             />
             <StatCard
               label="Open Deals"
               value={pipelineAnalytics.openDeals}
               subValue="In progress"
-              icon={<Clock size={20} className="text-purple-600 dark:text-purple-400" />}
+              icon={<Clock size={20} className="text-gray-600 dark:text-gray-400" />}
             />
           </div>
 
           {/* Deal Outcomes */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="bg-white dark:bg-dark-card rounded-xl border border-green-200 dark:border-green-800 p-6">
+            <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                  <Trophy size={20} className="text-green-600 dark:text-green-400" />
+                <div className="p-2 bg-gray-100 dark:bg-dark-elevated rounded-lg">
+                  <Trophy size={20} className="text-gray-600 dark:text-gray-400" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-green-700 dark:text-green-400">Won Deals</h3>
+                  <h3 className="font-semibold text-gray-700 dark:text-gray-300">Won Deals</h3>
                   <p className="text-sm text-gray-500 dark:text-dark-muted">Successfully closed</p>
                 </div>
               </div>
@@ -19067,13 +19246,13 @@ export const AnalyticsView: React.FC = () => {
               <p className="text-sm text-gray-500 dark:text-dark-muted mt-1">£{pipelineAnalytics.wonValue.toLocaleString()} total value</p>
             </div>
 
-            <div className="bg-white dark:bg-dark-card rounded-xl border border-red-200 dark:border-red-800 p-6">
+            <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-                  <ThumbsDown size={20} className="text-red-600 dark:text-red-400" />
+                <div className="p-2 bg-gray-100 dark:bg-dark-elevated rounded-lg">
+                  <ThumbsDown size={20} className="text-gray-600 dark:text-gray-400" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-red-700 dark:text-red-400">Lost Deals</h3>
+                  <h3 className="font-semibold text-gray-700 dark:text-gray-300">Lost Deals</h3>
                   <p className="text-sm text-gray-500 dark:text-dark-muted">Did not convert</p>
                 </div>
               </div>
@@ -19081,13 +19260,13 @@ export const AnalyticsView: React.FC = () => {
               <p className="text-sm text-gray-500 dark:text-dark-muted mt-1">£{pipelineAnalytics.lostValue.toLocaleString()} lost value</p>
             </div>
 
-            <div className="bg-white dark:bg-dark-card rounded-xl border border-blue-200 dark:border-blue-800 p-6">
+            <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                  <Clock size={20} className="text-blue-600 dark:text-blue-400" />
+                <div className="p-2 bg-gray-100 dark:bg-dark-elevated rounded-lg">
+                  <Clock size={20} className="text-gray-600 dark:text-gray-400" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-blue-700 dark:text-blue-400">Open Deals</h3>
+                  <h3 className="font-semibold text-gray-700 dark:text-gray-300">Open Deals</h3>
                   <p className="text-sm text-gray-500 dark:text-dark-muted">In progress</p>
                 </div>
               </div>
@@ -19131,23 +19310,23 @@ export const AnalyticsView: React.FC = () => {
               label="Total Tasks"
               value={taskAnalytics.totalTasks}
               subValue={`${taskAnalytics.completedTasks} completed`}
-              icon={<CheckSquare size={20} className="text-gold-600 dark:text-gold-400" />}
+              icon={<CheckSquare size={20} className="text-gray-600 dark:text-gray-400" />}
             />
             <StatCard
               label="Completion Rate"
               value={`${Math.round(taskAnalytics.completionRate)}%`}
-              icon={<TrendingUp size={20} className="text-green-600 dark:text-green-400" />}
+              icon={<TrendingUp size={20} className="text-gray-600 dark:text-gray-400" />}
             />
             <StatCard
               label="Overdue Tasks"
               value={taskAnalytics.overdueTasks}
               subValue="Need attention"
-              icon={<AlertTriangle size={20} className="text-red-600 dark:text-red-400" />}
+              icon={<AlertTriangle size={20} className="text-gray-600 dark:text-gray-400" />}
             />
             <StatCard
               label="Total Events"
               value={taskAnalytics.totalEvents}
-              icon={<Calendar size={20} className="text-blue-600 dark:text-blue-400" />}
+              icon={<Calendar size={20} className="text-gray-600 dark:text-gray-400" />}
             />
           </div>
 
@@ -19196,7 +19375,7 @@ export const AnalyticsView: React.FC = () => {
                 <div>
                   <div className="flex justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700 dark:text-dark-text flex items-center gap-2">
-                      <Star size={14} className="text-gold-500 fill-gold-500" /> Medium Priority
+                      <Star size={14} className="text-gray-500 fill-gold-500" /> Medium Priority
                     </span>
                     <span className="text-sm text-gray-500 dark:text-dark-muted">{taskAnalytics.mediumPriority} tasks</span>
                   </div>
@@ -19205,7 +19384,7 @@ export const AnalyticsView: React.FC = () => {
                 <div>
                   <div className="flex justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700 dark:text-dark-text flex items-center gap-2">
-                      <Star size={14} className="text-blue-500" /> Low Priority
+                      <Star size={14} className="text-gray-500" /> Low Priority
                     </span>
                     <span className="text-sm text-gray-500 dark:text-dark-muted">{taskAnalytics.lowPriority} tasks</span>
                   </div>
@@ -19221,7 +19400,7 @@ export const AnalyticsView: React.FC = () => {
             <div className="grid grid-cols-3 gap-6">
               <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
                 <div className="w-16 h-16 mx-auto bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-3">
-                  <Video size={24} className="text-blue-600 dark:text-blue-400" />
+                  <Video size={24} className="text-gray-600 dark:text-gray-400 dark:text-blue-400" />
                 </div>
                 <p className="text-2xl font-bold text-gray-800 dark:text-dark-text">{taskAnalytics.meetingEvents}</p>
                 <p className="text-sm text-gray-500 dark:text-dark-muted">Meetings</p>
@@ -19249,7 +19428,7 @@ export const AnalyticsView: React.FC = () => {
       {data.clients.length === 0 && data.pipelines.length === 0 && data.clientWork.length === 0 && (
         <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-12 text-center">
           <div className="w-20 h-20 mx-auto bg-gold-50 dark:bg-gold-900/30 rounded-full flex items-center justify-center mb-4">
-            <TrendingUp size={32} className="text-gold-500" />
+            <TrendingUp size={32} className="text-gray-500" />
           </div>
           <h3 className="text-lg font-semibold text-gray-800 dark:text-dark-text mb-2">No Data Yet</h3>
           <p className="text-gray-500 dark:text-dark-muted max-w-md mx-auto">
@@ -19265,7 +19444,7 @@ export const AnalyticsView: React.FC = () => {
 // WEBSITE LIBRARY VIEW
 // ============================================
 
-import { LibraryWebsite, WebsitePage, WebsiteIndustry, WEBSITE_INDUSTRIES, WebsitePreviewMode } from '../types';
+import { LibraryWebsite, WebsitePage, WebsiteIndustry, WEBSITE_INDUSTRIES, WebsitePreviewMode, WebsiteTier, WEBSITE_TIERS, WebsiteType, WEBSITE_TYPES, WebsiteStyle, WEBSITE_STYLES, WebsiteFeature, WEBSITE_FEATURES, PageCountRange } from '../types';
 
 const getDefaultWebsites = (): LibraryWebsite[] => [
   {
@@ -19284,6 +19463,11 @@ const getDefaultWebsites = (): LibraryWebsite[] => [
     linkedSnapshotIds: ['1'],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    tier: 'premium',
+    websiteType: 'website',
+    style: 'modern',
+    features: ['forms', 'gallery', 'testimonials'],
+    isFavorite: true,
   },
   {
     id: '2',
@@ -19300,6 +19484,11 @@ const getDefaultWebsites = (): LibraryWebsite[] => [
     linkedSnapshotIds: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    tier: 'basic',
+    websiteType: 'website',
+    style: 'corporate',
+    features: ['forms'],
+    isFavorite: false,
   },
   {
     id: '3',
@@ -19317,6 +19506,11 @@ const getDefaultWebsites = (): LibraryWebsite[] => [
     linkedSnapshotIds: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    tier: 'premium',
+    websiteType: 'webapp',
+    style: 'minimal',
+    features: ['forms', 'booking', 'gallery'],
+    isFavorite: false,
   },
   {
     id: '4',
@@ -19334,8 +19528,23 @@ const getDefaultWebsites = (): LibraryWebsite[] => [
     linkedSnapshotIds: ['2'],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    tier: 'basic',
+    websiteType: 'funnel',
+    style: 'creative',
+    features: ['gallery', 'booking', 'testimonials'],
+    isFavorite: true,
   },
 ];
+
+// Helper to migrate existing websites without new fields
+const migrateWebsite = (website: Partial<LibraryWebsite>): LibraryWebsite => ({
+  ...website as LibraryWebsite,
+  tier: website.tier || 'basic',
+  websiteType: website.websiteType || 'website',
+  style: website.style || 'modern',
+  features: website.features || [],
+  isFavorite: website.isFavorite ?? false,
+});
 
 export const WebsiteLibraryView: React.FC = () => {
   const { showToast } = useToast();
@@ -19345,6 +19554,29 @@ export const WebsiteLibraryView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [industryFilter, setIndustryFilter] = useState<WebsiteIndustry | 'all'>('all');
+
+  // Enhanced filter states
+  const [tierFilter, setTierFilter] = useState<WebsiteTier | 'all'>('all');
+  const [websiteTypeFilter, setWebsiteTypeFilter] = useState<WebsiteType | 'all'>('all');
+  const [pageCountFilter, setPageCountFilter] = useState<PageCountRange>('all');
+  const [styleFilter, setStyleFilter] = useState<WebsiteStyle | 'all'>('all');
+  const [previewModeFilter, setPreviewModeFilter] = useState<WebsitePreviewMode | 'all'>('all');
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
+  const [hasSnapshotsFilter, setHasSnapshotsFilter] = useState<'all' | 'yes' | 'no'>('all');
+  const [featuresFilter, setFeaturesFilter] = useState<WebsiteFeature[]>([]);
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+
+  // Sorting state
+  const [sortField, setSortField] = useState<'name' | 'createdAt' | 'updatedAt' | 'pages'>('createdAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Advanced filters UI state
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [industryDropdownOpen, setIndustryDropdownOpen] = useState(false);
+  const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
+  const [tierDropdownOpen, setTierDropdownOpen] = useState(false);
+  const [pagesDropdownOpen, setPagesDropdownOpen] = useState(false);
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
 
   // Selected website for detail view
   const [selectedWebsite, setSelectedWebsite] = useState<LibraryWebsite | null>(null);
@@ -19378,19 +19610,27 @@ export const WebsiteLibraryView: React.FC = () => {
     notes: '',
     previewMode: 'live' as WebsitePreviewMode,
     thumbnail: '',
+    tier: 'basic' as WebsiteTier,
+    websiteType: 'website' as WebsiteType,
+    style: 'modern' as WebsiteStyle,
+    features: [] as WebsiteFeature[],
   });
 
   // Lock state for scrollable iframes (per website ID)
   const [unlockedCards, setUnlockedCards] = useState<Set<string>>(new Set());
 
-  // Load websites from localStorage
+  // Load websites from localStorage (with migration for new fields)
   useEffect(() => {
     try {
       const saved = localStorage.getItem('tawfeeq_website_library');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setWebsites(parsed);
+          // Apply migration to ensure all websites have new fields
+          const migrated = parsed.map(migrateWebsite);
+          setWebsites(migrated);
+          // Save migrated data back
+          localStorage.setItem('tawfeeq_website_library', JSON.stringify(migrated));
           setIsLoading(false);
           return;
         }
@@ -19426,16 +19666,172 @@ export const WebsiteLibraryView: React.FC = () => {
     return [];
   }, []);
 
-  // Filter websites
+  // Comprehensive filtering and sorting
   const filteredWebsites = React.useMemo(() => {
-    return websites.filter(website => {
-      const matchesSearch = searchQuery === '' ||
-        website.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        website.liveUrl.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesIndustry = industryFilter === 'all' || website.industry === industryFilter;
-      return matchesSearch && matchesIndustry;
+    let result = websites.filter(website => {
+      // 1. Search filter (name, URL, notes)
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesSearch =
+          website.name.toLowerCase().includes(query) ||
+          website.liveUrl.toLowerCase().includes(query) ||
+          (website.notes?.toLowerCase().includes(query) ?? false);
+        if (!matchesSearch) return false;
+      }
+
+      // 2. Industry filter
+      if (industryFilter !== 'all' && website.industry !== industryFilter) {
+        return false;
+      }
+
+      // 3. Tier filter
+      if (tierFilter !== 'all' && website.tier !== tierFilter) {
+        return false;
+      }
+
+      // 4. Website type filter
+      if (websiteTypeFilter !== 'all' && website.websiteType !== websiteTypeFilter) {
+        return false;
+      }
+
+      // 5. Page count filter
+      if (pageCountFilter !== 'all') {
+        const pageCount = website.pages.length;
+        if (pageCountFilter === '1-3' && (pageCount < 1 || pageCount > 3)) return false;
+        if (pageCountFilter === '4-6' && (pageCount < 4 || pageCount > 6)) return false;
+        if (pageCountFilter === '7+' && pageCount < 7) return false;
+      }
+
+      // 5. Style filter
+      if (styleFilter !== 'all' && website.style !== styleFilter) {
+        return false;
+      }
+
+      // 6. Preview mode filter
+      if (previewModeFilter !== 'all' && website.previewMode !== previewModeFilter) {
+        return false;
+      }
+
+      // 7. Date filter
+      if (dateFilter !== 'all') {
+        const createdAt = new Date(website.createdAt);
+        const now = new Date();
+        const diffDays = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (dateFilter === 'today' && diffDays > 0) return false;
+        if (dateFilter === 'week' && diffDays > 7) return false;
+        if (dateFilter === 'month' && diffDays > 30) return false;
+      }
+
+      // 8. Has snapshots filter
+      if (hasSnapshotsFilter !== 'all') {
+        const hasSnapshots = website.linkedSnapshotIds.length > 0;
+        if (hasSnapshotsFilter === 'yes' && !hasSnapshots) return false;
+        if (hasSnapshotsFilter === 'no' && hasSnapshots) return false;
+      }
+
+      // 9. Features filter (multi-select AND logic)
+      if (featuresFilter.length > 0) {
+        const hasAllFeatures = featuresFilter.every(f => website.features?.includes(f));
+        if (!hasAllFeatures) return false;
+      }
+
+      // 10. Favorites filter
+      if (favoritesOnly && !website.isFavorite) {
+        return false;
+      }
+
+      return true;
     });
-  }, [websites, searchQuery, industryFilter]);
+
+    // Sorting
+    result.sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortField) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'createdAt':
+          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+        case 'updatedAt':
+          comparison = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+          break;
+        case 'pages':
+          comparison = a.pages.length - b.pages.length;
+          break;
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+
+    return result;
+  }, [
+    websites,
+    searchQuery,
+    industryFilter,
+    tierFilter,
+    websiteTypeFilter,
+    pageCountFilter,
+    styleFilter,
+    previewModeFilter,
+    dateFilter,
+    hasSnapshotsFilter,
+    featuresFilter,
+    favoritesOnly,
+    sortField,
+    sortDirection,
+  ]);
+
+  // Helper computed values for filter state
+  const hasActiveFilters =
+    searchQuery !== '' ||
+    industryFilter !== 'all' ||
+    tierFilter !== 'all' ||
+    websiteTypeFilter !== 'all' ||
+    pageCountFilter !== 'all' ||
+    styleFilter !== 'all' ||
+    previewModeFilter !== 'all' ||
+    dateFilter !== 'all' ||
+    hasSnapshotsFilter !== 'all' ||
+    featuresFilter.length > 0 ||
+    favoritesOnly;
+
+  const activeFilterCount = [
+    industryFilter !== 'all',
+    tierFilter !== 'all',
+    websiteTypeFilter !== 'all',
+    pageCountFilter !== 'all',
+    styleFilter !== 'all',
+    previewModeFilter !== 'all',
+    dateFilter !== 'all',
+    hasSnapshotsFilter !== 'all',
+    featuresFilter.length > 0,
+    favoritesOnly,
+  ].filter(Boolean).length;
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setSearchQuery('');
+    setIndustryFilter('all');
+    setTierFilter('all');
+    setWebsiteTypeFilter('all');
+    setPageCountFilter('all');
+    setStyleFilter('all');
+    setPreviewModeFilter('all');
+    setDateFilter('all');
+    setHasSnapshotsFilter('all');
+    setFeaturesFilter([]);
+    setFavoritesOnly(false);
+  };
+
+  // Toggle favorite status
+  const toggleFavorite = (websiteId: string) => {
+    setWebsites(prev => prev.map(w =>
+      w.id === websiteId ? { ...w, isFavorite: !w.isFavorite } : w
+    ));
+  };
 
   // Get industry info
   const getIndustryInfo = (industryId: string) => {
@@ -19499,11 +19895,16 @@ export const WebsiteLibraryView: React.FC = () => {
       notes: websiteForm.notes.trim(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      tier: websiteForm.tier,
+      websiteType: websiteForm.websiteType,
+      style: websiteForm.style,
+      features: websiteForm.features,
+      isFavorite: false,
     };
 
     setWebsites([...websites, newWebsite]);
     setShowAddModal(false);
-    setWebsiteForm({ name: '', liveUrl: '', industry: 'other', notes: '', previewMode: 'live', thumbnail: '' });
+    setWebsiteForm({ name: '', liveUrl: '', industry: 'other', notes: '', previewMode: 'live', thumbnail: '', tier: 'basic', websiteType: 'website', style: 'modern', features: [] });
     showToast('success', 'Website added to library');
   };
 
@@ -19532,6 +19933,10 @@ export const WebsiteLibraryView: React.FC = () => {
             thumbnail: websiteForm.thumbnail.trim() || undefined,
             notes: websiteForm.notes.trim(),
             pages: updatedPages,
+            tier: websiteForm.tier,
+            websiteType: websiteForm.websiteType,
+            style: websiteForm.style,
+            features: websiteForm.features,
             updatedAt: new Date().toISOString(),
           }
         : w
@@ -19550,13 +19955,14 @@ export const WebsiteLibraryView: React.FC = () => {
         thumbnail: websiteForm.thumbnail.trim() || undefined,
         notes: websiteForm.notes.trim(),
         pages: updatedPages,
+        websiteType: websiteForm.websiteType,
         updatedAt: new Date().toISOString(),
       });
     }
 
     setEditingWebsite(null);
     setShowAddModal(false);
-    setWebsiteForm({ name: '', liveUrl: '', industry: 'other', notes: '', previewMode: 'live', thumbnail: '' });
+    setWebsiteForm({ name: '', liveUrl: '', industry: 'other', notes: '', previewMode: 'live', thumbnail: '', tier: 'basic', websiteType: 'website', style: 'modern', features: [] });
     showToast('success', 'Website updated');
   };
 
@@ -19726,6 +20132,12 @@ export const WebsiteLibraryView: React.FC = () => {
       liveUrl: website.liveUrl,
       industry: website.industry,
       notes: website.notes || '',
+      previewMode: website.previewMode,
+      thumbnail: website.thumbnail || '',
+      tier: website.tier || 'basic',
+      websiteType: website.websiteType || 'website',
+      style: website.style || 'modern',
+      features: website.features || [],
     });
     setShowAddModal(true);
   };
@@ -19790,7 +20202,7 @@ export const WebsiteLibraryView: React.FC = () => {
                   href={selectedWebsite.liveUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-gold-600 dark:text-gold-400 hover:text-gold-700 flex items-center gap-1 mt-1"
+                  className="text-sm text-gray-600 dark:text-gray-400 dark:text-gold-400 hover:text-gray-700 dark:text-gray-300 flex items-center gap-1 mt-1"
                 >
                   <Globe size={14} />
                   {selectedWebsite.liveUrl.replace(/^https?:\/\//, '')}
@@ -19829,7 +20241,7 @@ export const WebsiteLibraryView: React.FC = () => {
                 setNewPageForm({ name: '', url: '' });
                 setShowAddPageModal(true);
               }}
-              className="flex items-center gap-1.5 text-gold-600 dark:text-gold-400 hover:text-gold-700 text-sm font-medium transition-colors"
+              className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400 dark:text-gold-400 hover:text-gray-700 dark:text-gray-300 text-sm font-medium transition-colors"
             >
               <Plus size={16} />
               Add Page
@@ -20029,7 +20441,7 @@ export const WebsiteLibraryView: React.FC = () => {
                               <div className="flex items-center gap-2">
                                 <h4 className="font-medium text-gray-800 dark:text-dark-text text-sm truncate">{page.name}</h4>
                                 {page.isHomePage && (
-                                  <span className="px-1.5 py-0.5 bg-gold-100 dark:bg-gold-900/30 text-gold-600 dark:text-gold-400 text-[10px] font-medium rounded">
+                                  <span className="px-1.5 py-0.5 bg-gold-100 dark:bg-gold-900/30 text-gray-600 dark:text-gray-400 dark:text-gold-400 text-[10px] font-medium rounded">
                                     HOME
                                   </span>
                                 )}
@@ -20056,9 +20468,9 @@ export const WebsiteLibraryView: React.FC = () => {
                 >
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-14 h-14 bg-gray-200 dark:bg-dark-border rounded-full flex items-center justify-center group-hover:bg-gold-100 dark:group-hover:bg-gold-900/30 transition-colors">
-                      <Plus size={24} className="text-gray-500 group-hover:text-gold-600 dark:group-hover:text-gold-400 transition-colors" />
+                      <Plus size={24} className="text-gray-500 group-hover:text-gray-600 dark:text-gray-400 dark:group-hover:text-gold-400 transition-colors" />
                     </div>
-                    <span className="text-sm font-medium text-gray-500 group-hover:text-gold-600 dark:group-hover:text-gold-400 transition-colors">Add Page</span>
+                    <span className="text-sm font-medium text-gray-500 group-hover:text-gray-600 dark:text-gray-400 dark:group-hover:text-gold-400 transition-colors">Add Page</span>
                   </div>
                 </button>
               </div>
@@ -20068,9 +20480,9 @@ export const WebsiteLibraryView: React.FC = () => {
 
         {/* Add/Edit Page Modal */}
         {showAddPageModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowAddPageModal(false)}>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowAddPageModal(false)}>
             <div
-              className="bg-white dark:bg-dark-card rounded-xl shadow-xl w-full max-w-md mx-4"
+              className="bg-white dark:bg-dark-card rounded-xl shadow-xl w-full max-w-md"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-border">
@@ -20142,9 +20554,9 @@ export const WebsiteLibraryView: React.FC = () => {
 
         {/* Delete Page Confirmation */}
         {showDeletePageConfirm && pageToDelete && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowDeletePageConfirm(false)}>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowDeletePageConfirm(false)}>
             <div
-              className="bg-white dark:bg-dark-card rounded-xl shadow-xl w-full max-w-sm mx-4 p-5"
+              className="bg-white dark:bg-dark-card rounded-xl shadow-xl w-full max-w-sm p-5"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="text-center mb-4">
@@ -20165,7 +20577,7 @@ export const WebsiteLibraryView: React.FC = () => {
                 </button>
                 <button
                   onClick={handleDeletePage}
-                  className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
+                  className="flex-1 px-4 py-2 bg-gray-400 dark:bg-gray-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
                 >
                   Delete
                 </button>
@@ -20180,72 +20592,490 @@ export const WebsiteLibraryView: React.FC = () => {
   // Main library grid view
   return (
     <div className="space-y-6">
-      {/* Header with search and filter */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex-1 flex items-center gap-4">
-          {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+      {/* Professional Filter Bar */}
+      <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-4 space-y-4">
+        {/* Row 1: Search + Primary Filters + Add Button */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Search Input */}
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-muted" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search websites..."
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-dark-border rounded-xl bg-white dark:bg-dark-card text-gray-800 dark:text-dark-text focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 bg-white dark:bg-dark-elevated dark:text-dark-text dark:placeholder-dark-muted"
             />
           </div>
 
-          {/* Industry filter */}
-          <select
-            value={industryFilter}
-            onChange={(e) => setIndustryFilter(e.target.value as WebsiteIndustry | 'all')}
-            className="px-4 py-2.5 border border-gray-200 dark:border-dark-border rounded-xl bg-white dark:bg-dark-card text-gray-800 dark:text-dark-text focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+          {/* Industry Filter */}
+          <div className="relative">
+            <button
+              onClick={() => { setIndustryDropdownOpen(!industryDropdownOpen); setTypeDropdownOpen(false); setTierDropdownOpen(false); setPagesDropdownOpen(false); setSortDropdownOpen(false); }}
+              className={`flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition-colors ${
+                industryFilter !== 'all'
+                  ? 'border-gold-400 bg-gold-50 text-gray-700 dark:text-gray-300 dark:bg-gold-900/20 dark:text-gold-400 dark:border-gold-700'
+                  : 'border-gray-200 bg-white text-gray-600 dark:border-dark-border dark:bg-dark-elevated dark:text-dark-muted hover:bg-gray-50 dark:hover:bg-dark-elevated'
+              }`}
+            >
+              <Building2 size={14} className={industryFilter !== 'all' ? 'text-gray-600 dark:text-gray-400 dark:text-gold-400' : 'text-gray-400'} />
+              <span>{industryFilter === 'all' ? 'Industry' : WEBSITE_INDUSTRIES.find(i => i.id === industryFilter)?.name}</span>
+              <ChevronDown size={14} className={industryFilter !== 'all' ? 'text-gray-600 dark:text-gray-400 dark:text-gold-400' : 'text-gray-400'} />
+            </button>
+            {industryDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl shadow-lg z-30 overflow-hidden p-1">
+                <button
+                  onClick={() => { setIndustryFilter('all'); setIndustryDropdownOpen(false); }}
+                  className={`w-full px-3 py-2 flex items-center gap-2 rounded-lg transition-colors whitespace-nowrap ${
+                    industryFilter === 'all'
+                      ? 'bg-gold-50 text-gray-700 dark:text-gray-300 dark:bg-gold-900/20 dark:text-gold-400'
+                      : 'hover:bg-gray-50 dark:hover:bg-dark-elevated text-gray-600 dark:text-dark-muted'
+                  }`}
+                >
+                  <Building2 size={14} />
+                  <span className="text-sm">All Industries</span>
+                </button>
+                {WEBSITE_INDUSTRIES.map(ind => (
+                  <button
+                    key={ind.id}
+                    onClick={() => { setIndustryFilter(ind.id as WebsiteIndustry); setIndustryDropdownOpen(false); }}
+                    className={`w-full px-3 py-2 flex items-center gap-2 rounded-lg transition-colors whitespace-nowrap ${
+                      industryFilter === ind.id
+                        ? 'bg-gold-50 text-gray-700 dark:text-gray-300 dark:bg-gold-900/20 dark:text-gold-400'
+                        : 'hover:bg-gray-50 dark:hover:bg-dark-elevated text-gray-600 dark:text-dark-muted'
+                    }`}
+                  >
+                    <Building2 size={14} />
+                    <span className="text-sm">{ind.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Type Filter */}
+          <div className="relative">
+            <button
+              onClick={() => { setTypeDropdownOpen(!typeDropdownOpen); setIndustryDropdownOpen(false); setTierDropdownOpen(false); setPagesDropdownOpen(false); setSortDropdownOpen(false); }}
+              className={`flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition-colors ${
+                websiteTypeFilter !== 'all'
+                  ? 'border-gold-400 bg-gold-50 text-gray-700 dark:text-gray-300 dark:bg-gold-900/20 dark:text-gold-400 dark:border-gold-700'
+                  : 'border-gray-200 bg-white text-gray-600 dark:border-dark-border dark:bg-dark-elevated dark:text-dark-muted hover:bg-gray-50 dark:hover:bg-dark-elevated'
+              }`}
+            >
+              <Layout size={14} className={websiteTypeFilter !== 'all' ? 'text-gray-600 dark:text-gray-400 dark:text-gold-400' : 'text-gray-400'} />
+              <span>{websiteTypeFilter === 'all' ? 'Type' : WEBSITE_TYPES.find(t => t.id === websiteTypeFilter)?.name}</span>
+              <ChevronDown size={14} className={websiteTypeFilter !== 'all' ? 'text-gray-600 dark:text-gray-400 dark:text-gold-400' : 'text-gray-400'} />
+            </button>
+            {typeDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 w-40 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl shadow-lg z-30 overflow-hidden p-1">
+                <button
+                  onClick={() => { setWebsiteTypeFilter('all'); setTypeDropdownOpen(false); }}
+                  className={`w-full px-3 py-2 flex items-center gap-2 rounded-lg transition-colors ${
+                    websiteTypeFilter === 'all'
+                      ? 'bg-gold-50 text-gray-700 dark:text-gray-300 dark:bg-gold-900/20 dark:text-gold-400'
+                      : 'hover:bg-gray-50 dark:hover:bg-dark-elevated text-gray-600 dark:text-dark-muted'
+                  }`}
+                >
+                  <Layout size={14} />
+                  <span className="text-sm">All Types</span>
+                </button>
+                {WEBSITE_TYPES.map(type => (
+                  <button
+                    key={type.id}
+                    onClick={() => { setWebsiteTypeFilter(type.id as WebsiteType); setTypeDropdownOpen(false); }}
+                    className={`w-full px-3 py-2 flex items-center gap-2 rounded-lg transition-colors ${
+                      websiteTypeFilter === type.id
+                        ? 'bg-gold-50 text-gray-700 dark:text-gray-300 dark:bg-gold-900/20 dark:text-gold-400'
+                        : 'hover:bg-gray-50 dark:hover:bg-dark-elevated text-gray-600 dark:text-dark-muted'
+                    }`}
+                  >
+                    <Layout size={14} />
+                    <span className="text-sm">{type.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Tier Filter */}
+          <div className="relative">
+            <button
+              onClick={() => { setTierDropdownOpen(!tierDropdownOpen); setIndustryDropdownOpen(false); setTypeDropdownOpen(false); setPagesDropdownOpen(false); setSortDropdownOpen(false); }}
+              className={`flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition-colors ${
+                tierFilter !== 'all'
+                  ? 'border-gold-400 bg-gold-50 text-gray-700 dark:text-gray-300 dark:bg-gold-900/20 dark:text-gold-400 dark:border-gold-700'
+                  : 'border-gray-200 bg-white text-gray-600 dark:border-dark-border dark:bg-dark-elevated dark:text-dark-muted hover:bg-gray-50 dark:hover:bg-dark-elevated'
+              }`}
+            >
+              <Star size={14} className={tierFilter !== 'all' ? 'text-gray-600 dark:text-gray-400 dark:text-gold-400' : 'text-gray-400'} />
+              <span>{tierFilter === 'all' ? 'Tier' : WEBSITE_TIERS.find(t => t.id === tierFilter)?.name}</span>
+              <ChevronDown size={14} className={tierFilter !== 'all' ? 'text-gray-600 dark:text-gray-400 dark:text-gold-400' : 'text-gray-400'} />
+            </button>
+            {tierDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 w-36 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl shadow-lg z-30 overflow-hidden p-1">
+                <button
+                  onClick={() => { setTierFilter('all'); setTierDropdownOpen(false); }}
+                  className={`w-full px-3 py-2 flex items-center gap-2 rounded-lg transition-colors ${
+                    tierFilter === 'all'
+                      ? 'bg-gold-50 text-gray-700 dark:text-gray-300 dark:bg-gold-900/20 dark:text-gold-400'
+                      : 'hover:bg-gray-50 dark:hover:bg-dark-elevated text-gray-600 dark:text-dark-muted'
+                  }`}
+                >
+                  <Star size={14} />
+                  <span className="text-sm">All Tiers</span>
+                </button>
+                {WEBSITE_TIERS.map(tier => (
+                  <button
+                    key={tier.id}
+                    onClick={() => { setTierFilter(tier.id as WebsiteTier); setTierDropdownOpen(false); }}
+                    className={`w-full px-3 py-2 flex items-center gap-2 rounded-lg transition-colors ${
+                      tierFilter === tier.id
+                        ? 'bg-gold-50 text-gray-700 dark:text-gray-300 dark:bg-gold-900/20 dark:text-gold-400'
+                        : 'hover:bg-gray-50 dark:hover:bg-dark-elevated text-gray-600 dark:text-dark-muted'
+                    }`}
+                  >
+                    <Star size={14} />
+                    <span className="text-sm">{tier.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Page Count Filter */}
+          <div className="relative">
+            <button
+              onClick={() => { setPagesDropdownOpen(!pagesDropdownOpen); setIndustryDropdownOpen(false); setTypeDropdownOpen(false); setTierDropdownOpen(false); setSortDropdownOpen(false); }}
+              className={`flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition-colors ${
+                pageCountFilter !== 'all'
+                  ? 'border-gold-400 bg-gold-50 text-gray-700 dark:text-gray-300 dark:bg-gold-900/20 dark:text-gold-400 dark:border-gold-700'
+                  : 'border-gray-200 bg-white text-gray-600 dark:border-dark-border dark:bg-dark-elevated dark:text-dark-muted hover:bg-gray-50 dark:hover:bg-dark-elevated'
+              }`}
+            >
+              <FileText size={14} className={pageCountFilter !== 'all' ? 'text-gray-600 dark:text-gray-400 dark:text-gold-400' : 'text-gray-400'} />
+              <span>{pageCountFilter === 'all' ? 'Pages' : pageCountFilter}</span>
+              <ChevronDown size={14} className={pageCountFilter !== 'all' ? 'text-gray-600 dark:text-gray-400 dark:text-gold-400' : 'text-gray-400'} />
+            </button>
+            {pagesDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 w-36 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl shadow-lg z-30 overflow-hidden p-1">
+                {[
+                  { id: 'all', label: 'All Pages' },
+                  { id: '1-3', label: '1-3 Pages' },
+                  { id: '4-6', label: '4-6 Pages' },
+                  { id: '7+', label: '7+ Pages' },
+                ].map(option => (
+                  <button
+                    key={option.id}
+                    onClick={() => { setPageCountFilter(option.id as PageCountRange); setPagesDropdownOpen(false); }}
+                    className={`w-full px-3 py-2 flex items-center gap-2 rounded-lg transition-colors ${
+                      pageCountFilter === option.id
+                        ? 'bg-gold-50 text-gray-700 dark:text-gray-300 dark:bg-gold-900/20 dark:text-gold-400'
+                        : 'hover:bg-gray-50 dark:hover:bg-dark-elevated text-gray-600 dark:text-dark-muted'
+                    }`}
+                  >
+                    <FileText size={14} />
+                    <span className="text-sm">{option.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Sort Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => { setSortDropdownOpen(!sortDropdownOpen); setIndustryDropdownOpen(false); setTypeDropdownOpen(false); setTierDropdownOpen(false); setPagesDropdownOpen(false); }}
+              className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-elevated transition-colors"
+            >
+              <ArrowUpDown size={14} className="text-gray-400" />
+              <span className="text-gray-600 dark:text-dark-muted">
+                {sortField === 'name' ? 'Name' : sortField === 'createdAt' ? 'Date Added' : sortField === 'updatedAt' ? 'Last Updated' : 'Pages'}
+              </span>
+              <span className="text-gray-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+            </button>
+            {sortDropdownOpen && (
+              <div className="absolute top-full right-0 mt-1 w-48 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl shadow-lg z-30 overflow-hidden p-1">
+                {[
+                  { field: 'createdAt' as const, label: 'Date Added', icon: Calendar },
+                  { field: 'updatedAt' as const, label: 'Last Updated', icon: Clock },
+                  { field: 'name' as const, label: 'Name', icon: Type },
+                  { field: 'pages' as const, label: 'Page Count', icon: Layers },
+                ].map(option => {
+                  const Icon = option.icon;
+                  const isActive = sortField === option.field;
+                  return (
+                    <button
+                      key={option.field}
+                      onClick={() => {
+                        if (isActive) {
+                          setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortField(option.field);
+                          setSortDirection(['createdAt', 'updatedAt'].includes(option.field) ? 'desc' : 'asc');
+                        }
+                        setSortDropdownOpen(false);
+                      }}
+                      className={`w-full px-3 py-2 flex items-center justify-between rounded-lg transition-colors ${
+                        isActive
+                          ? 'bg-gold-50 text-gray-700 dark:text-gray-300 dark:bg-gold-900/20 dark:text-gold-400'
+                          : 'hover:bg-gray-50 dark:hover:bg-dark-elevated text-gray-600 dark:text-dark-muted'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Icon size={14} />
+                        <span className="text-sm">{option.label}</span>
+                      </div>
+                      {isActive && <span className="text-gray-500">{sortDirection === 'asc' ? '↑' : '↓'}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Advanced Filters Toggle */}
+          <button
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            className={`px-3 py-2 text-sm border rounded-lg transition-colors flex items-center gap-2 ${
+              showAdvancedFilters || activeFilterCount > 0
+                ? 'border-gold-400 bg-gold-50 text-gray-700 dark:text-gray-300 dark:bg-gold-900/20 dark:text-gold-400 dark:border-gold-700'
+                : 'border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-dark-border dark:text-dark-muted dark:hover:bg-dark-elevated'
+            }`}
           >
-            <option value="all">All Industries</option>
-            {WEBSITE_INDUSTRIES.map(ind => (
-              <option key={ind.id} value={ind.id}>{ind.icon} {ind.name}</option>
-            ))}
-          </select>
+            <SlidersHorizontal size={14} />
+            <span>Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="w-5 h-5 rounded-full bg-gold-500 text-white text-xs flex items-center justify-center font-medium">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+
+          {/* Clear Filters */}
+          {hasActiveFilters && (
+            <button
+              onClick={clearAllFilters}
+              className="px-3 py-2 text-sm text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-elevated rounded-lg transition-colors flex items-center gap-1"
+            >
+              <X size={14} />
+              Clear
+            </button>
+          )}
+
+          {/* Add Website Button */}
+          <button
+            onClick={() => {
+              setEditingWebsite(null);
+              setWebsiteForm({ name: '', liveUrl: '', industry: 'other', notes: '', previewMode: 'live', thumbnail: '', tier: 'basic', websiteType: 'website', style: 'modern', features: [] });
+              setShowAddModal(true);
+            }}
+            className="ml-auto flex items-center gap-2 bg-gold-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors shadow-sm"
+          >
+            <Plus size={16} />
+            Add Website
+          </button>
         </div>
 
-        {/* Add website button */}
-        <button
-          onClick={() => {
-            setEditingWebsite(null);
-            setWebsiteForm({ name: '', liveUrl: '', industry: 'other', notes: '' });
-            setShowAddModal(true);
-          }}
-          className="flex items-center gap-2 bg-gold-500 text-white px-4 py-2.5 rounded-xl font-medium hover:bg-gold-600 transition-colors shadow-sm"
-        >
-          <Plus size={18} />
-          Add Website
-        </button>
-      </div>
+        {/* Row 2: Quick Filter Chips */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-gray-500 dark:text-dark-muted font-medium">Quick filters:</span>
 
-      {/* Website count */}
-      <div className="text-sm text-gray-500 dark:text-dark-muted">
-        {filteredWebsites.length} website{filteredWebsites.length !== 1 ? 's' : ''} in library
+          {/* Premium */}
+          <button
+            onClick={() => { clearAllFilters(); setTierFilter('premium'); }}
+            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex items-center gap-1.5 ${
+              tierFilter === 'premium' && !favoritesOnly
+                ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800'
+                : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-dark-muted hover:bg-gray-200 dark:hover:bg-dark-hover'
+            }`}
+          >
+            <span>⭐</span>
+            Premium
+          </button>
+
+          {/* Recently Added */}
+          <button
+            onClick={() => { clearAllFilters(); setDateFilter('week'); setSortField('createdAt'); setSortDirection('desc'); }}
+            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex items-center gap-1.5 ${
+              dateFilter === 'week'
+                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
+                : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-dark-muted hover:bg-gray-200 dark:hover:bg-dark-hover'
+            }`}
+          >
+            <Clock size={12} />
+            Recently Added
+          </button>
+
+          {/* Multi-page */}
+          <button
+            onClick={() => { clearAllFilters(); setPageCountFilter('7+'); }}
+            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex items-center gap-1.5 ${
+              pageCountFilter === '7+'
+                ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-800'
+                : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-dark-muted hover:bg-gray-200 dark:hover:bg-dark-hover'
+            }`}
+          >
+            <FileText size={12} />
+            Multi-page
+          </button>
+
+          {/* With Snapshots */}
+          <button
+            onClick={() => { clearAllFilters(); setHasSnapshotsFilter('yes'); }}
+            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex items-center gap-1.5 ${
+              hasSnapshotsFilter === 'yes'
+                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800'
+                : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-dark-muted hover:bg-gray-200 dark:hover:bg-dark-hover'
+            }`}
+          >
+            <Database size={12} />
+            With Snapshots
+          </button>
+
+          {/* Favorites */}
+          <button
+            onClick={() => setFavoritesOnly(!favoritesOnly)}
+            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex items-center gap-1.5 ${
+              favoritesOnly
+                ? 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-400 border border-pink-200 dark:border-pink-800'
+                : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-dark-muted hover:bg-gray-200 dark:hover:bg-dark-hover'
+            }`}
+          >
+            <Heart size={12} />
+            Favorites
+          </button>
+        </div>
+
+        {/* Row 3: Advanced Filters (Collapsible) */}
+        {showAdvancedFilters && (
+          <div className="pt-4 border-t border-gray-100 dark:border-dark-border">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              {/* Style Filter */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-dark-muted mb-1.5">Style</label>
+                <select
+                  value={styleFilter}
+                  onChange={(e) => setStyleFilter(e.target.value as WebsiteStyle | 'all')}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 bg-white dark:bg-dark-elevated dark:text-dark-text"
+                >
+                  <option value="all">All Styles</option>
+                  {WEBSITE_STYLES.map(style => (
+                    <option key={style.id} value={style.id}>{style.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Preview Mode Filter */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-dark-muted mb-1.5">Preview Mode</label>
+                <select
+                  value={previewModeFilter}
+                  onChange={(e) => setPreviewModeFilter(e.target.value as WebsitePreviewMode | 'all')}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 bg-white dark:bg-dark-elevated dark:text-dark-text"
+                >
+                  <option value="all">All Modes</option>
+                  <option value="live">Live Preview</option>
+                  <option value="thumbnail">Thumbnail</option>
+                </select>
+              </div>
+
+              {/* Date Added Filter */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-dark-muted mb-1.5">Date Added</label>
+                <select
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value as 'all' | 'today' | 'week' | 'month')}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 bg-white dark:bg-dark-elevated dark:text-dark-text"
+                >
+                  <option value="all">Any Time</option>
+                  <option value="today">Today</option>
+                  <option value="week">This Week</option>
+                  <option value="month">This Month</option>
+                </select>
+              </div>
+
+              {/* Has Snapshots Filter */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-dark-muted mb-1.5">Linked Snapshots</label>
+                <select
+                  value={hasSnapshotsFilter}
+                  onChange={(e) => setHasSnapshotsFilter(e.target.value as 'all' | 'yes' | 'no')}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 bg-white dark:bg-dark-elevated dark:text-dark-text"
+                >
+                  <option value="all">Any</option>
+                  <option value="yes">Has Snapshots</option>
+                  <option value="no">No Snapshots</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Features Multi-Select */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-dark-muted mb-2">Features</label>
+              <div className="flex flex-wrap gap-2">
+                {WEBSITE_FEATURES.map(feature => {
+                  const isSelected = featuresFilter.includes(feature.id as WebsiteFeature);
+                  return (
+                    <button
+                      key={feature.id}
+                      onClick={() => {
+                        if (isSelected) {
+                          setFeaturesFilter(featuresFilter.filter(f => f !== feature.id));
+                        } else {
+                          setFeaturesFilter([...featuresFilter, feature.id as WebsiteFeature]);
+                        }
+                      }}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all flex items-center gap-1.5 ${
+                        isSelected
+                          ? 'bg-gold-100 dark:bg-gold-900/30 text-gray-700 dark:text-gray-300 dark:text-gold-400 border border-gold-300 dark:border-gold-700'
+                          : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-dark-muted border border-transparent hover:border-gray-300 dark:hover:border-dark-border'
+                      }`}
+                    >
+                      {feature.name}
+                      {isSelected && <X size={12} className="ml-0.5" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Results Count */}
+        <div className="text-xs text-gray-500 dark:text-dark-muted">
+          Showing {filteredWebsites.length} of {websites.length} websites
+          {hasActiveFilters && <span className="ml-1 text-gray-600 dark:text-gray-400 dark:text-gold-400">(filtered)</span>}
+        </div>
       </div>
 
       {/* Website grid */}
       {filteredWebsites.length === 0 ? (
         <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-12 text-center">
           <div className="w-20 h-20 mx-auto bg-gold-50 dark:bg-gold-900/30 rounded-full flex items-center justify-center mb-4">
-            <Globe size={32} className="text-gold-500" />
+            <Globe size={32} className="text-gray-500" />
           </div>
           <h3 className="text-lg font-semibold text-gray-800 dark:text-dark-text mb-2">
-            {searchQuery || industryFilter !== 'all' ? 'No websites found' : 'No websites yet'}
+            {hasActiveFilters ? 'No websites found' : 'No websites yet'}
           </h3>
           <p className="text-gray-500 dark:text-dark-muted mb-4">
-            {searchQuery || industryFilter !== 'all'
-              ? 'Try adjusting your search or filter'
+            {hasActiveFilters
+              ? 'Try adjusting your search or filters'
               : 'Add your first website template to the library'}
           </p>
-          {!searchQuery && industryFilter === 'all' && (
+          {hasActiveFilters ? (
+            <button
+              onClick={clearAllFilters}
+              className="inline-flex items-center gap-2 bg-gray-100 dark:bg-dark-elevated text-gray-700 dark:text-dark-text px-4 py-2 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-dark-hover transition-colors"
+            >
+              <X size={18} />
+              Clear Filters
+            </button>
+          ) : (
             <button
               onClick={() => {
                 setEditingWebsite(null);
-                setWebsiteForm({ name: '', liveUrl: '', industry: 'other', notes: '' });
+                setWebsiteForm({ name: '', liveUrl: '', industry: 'other', notes: '', previewMode: 'live', thumbnail: '', tier: 'basic', websiteType: 'website', style: 'modern', features: [] });
                 setShowAddModal(true);
               }}
               className="inline-flex items-center gap-2 bg-gold-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gold-600 transition-colors"
@@ -20285,13 +21115,17 @@ export const WebsiteLibraryView: React.FC = () => {
                       {/*
                         Structure:
                         - Outer div: clips content, handles scroll (overflow)
-                        - Inner div: sized to scaled dimensions (403x840) so scrollbar knows content size
-                        - Iframe: full 1440x3000, visually scaled to 0.28
+                        - Inner div: sized to match card dimensions (100% width/height), contains scaled iframe
+                        - Iframe: full 1440px width, scaled to fit card width
+
+                        The iframe is scaled so that 1440px maps to 100% of card width.
+                        Using scale(0.25) means the visible area shows ~400px of card = 1600px of site width
+                        which fits well in typical card sizes. The height is set tall enough to scroll.
 
                         Lock/unlock ONLY toggles overflow + pointerEvents.
                         Scale, dimensions, transform-origin stay constant.
                       */}
-                      <div style={{ width: '403px', height: '840px', position: 'relative' }}>
+                      <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
                         <iframe
                           src={website.liveUrl}
                           title={website.name}
@@ -20300,11 +21134,12 @@ export const WebsiteLibraryView: React.FC = () => {
                             top: 0,
                             left: 0,
                             width: '1440px',
-                            height: '3000px',
+                            height: '900px',
                             border: 'none',
-                            transform: 'scale(0.28)',
+                            transform: 'scale(var(--preview-scale, 0.28))',
                             transformOrigin: 'top left',
                           }}
+                          className="preview-iframe"
                           sandbox="allow-scripts allow-same-origin"
                         />
                       </div>
@@ -20364,16 +21199,17 @@ export const WebsiteLibraryView: React.FC = () => {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setEditingWebsite(website);
-                            setWebsiteForm({
-                              name: website.name,
-                              liveUrl: website.liveUrl,
-                              industry: website.industry,
-                              notes: website.notes || '',
-                              previewMode: website.previewMode || 'live',
-                              thumbnail: website.thumbnail || '',
-                            });
-                            setShowAddModal(true);
+                            toggleFavorite(website.id);
+                          }}
+                          className={`p-2 rounded-lg backdrop-blur-sm transition-colors ${website.isFavorite ? 'bg-pink-500/50 hover:bg-pink-500/70' : 'bg-white/20 hover:bg-white/30'}`}
+                          title={website.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                        >
+                          <Heart size={16} className={website.isFavorite ? 'text-white fill-current' : 'text-white'} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditModal(website);
                           }}
                           className="p-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-sm transition-colors"
                           title="Edit"
@@ -20433,10 +21269,20 @@ export const WebsiteLibraryView: React.FC = () => {
                     <div className="flex items-center gap-2 min-w-0">
                       <span className={`w-2 h-2 rounded-full ${industry.color} flex-shrink-0`} />
                       <span className="font-medium text-gray-800 dark:text-dark-text text-sm truncate">{website.name}</span>
+                      {website.isFavorite && (
+                        <Heart size={12} className="text-pink-500 fill-current flex-shrink-0" />
+                      )}
                     </div>
-                    <span className="text-xs text-gray-400 dark:text-dark-muted flex-shrink-0">
-                      {website.pages.length} pg{website.pages.length !== 1 ? 's' : ''}
-                    </span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {website.tier === 'premium' && (
+                        <span className="px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-medium rounded">
+                          ⭐
+                        </span>
+                      )}
+                      <span className="text-xs text-gray-400 dark:text-dark-muted">
+                        {website.pages.length} pg{website.pages.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -20447,16 +21293,16 @@ export const WebsiteLibraryView: React.FC = () => {
           <button
             onClick={() => {
               setEditingWebsite(null);
-              setWebsiteForm({ name: '', liveUrl: '', industry: 'other', notes: '', previewMode: 'live', thumbnail: '' });
+              setWebsiteForm({ name: '', liveUrl: '', industry: 'other', notes: '', previewMode: 'live', thumbnail: '', tier: 'basic', websiteType: 'website', style: 'modern', features: [] });
               setShowAddModal(true);
             }}
             className="group relative rounded-xl border-2 border-dashed border-gray-300 dark:border-dark-border hover:border-gold-400 dark:hover:border-gold-500 bg-gray-50/50 dark:bg-dark-elevated/50 flex items-center justify-center transition-all duration-300 hover:bg-gold-50/50 dark:hover:bg-gold-900/10 min-h-[280px]"
           >
             <div className="flex flex-col items-center gap-3">
               <div className="w-14 h-14 rounded-full bg-gray-200 dark:bg-dark-border group-hover:bg-gold-100 dark:group-hover:bg-gold-900/30 flex items-center justify-center transition-colors">
-                <Plus size={28} className="text-gray-400 group-hover:text-gold-600 transition-colors" />
+                <Plus size={28} className="text-gray-400 group-hover:text-gray-600 dark:text-gray-400 transition-colors" />
               </div>
-              <span className="text-sm text-gray-400 group-hover:text-gold-600 font-medium transition-colors">Add Website</span>
+              <span className="text-sm text-gray-400 group-hover:text-gray-600 dark:text-gray-400 font-medium transition-colors">Add Website</span>
             </div>
           </button>
         </div>
@@ -20510,9 +21356,92 @@ export const WebsiteLibraryView: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:ring-2 focus:ring-gold-500 focus:border-transparent"
                 >
                   {WEBSITE_INDUSTRIES.map(ind => (
-                    <option key={ind.id} value={ind.id}>{ind.icon} {ind.name}</option>
+                    <option key={ind.id} value={ind.id}>{ind.name}</option>
                   ))}
                 </select>
+              </div>
+
+              {/* Type, Tier & Style Row */}
+              <div className="grid grid-cols-3 gap-4">
+                {/* Type Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">Type</label>
+                  <select
+                    value={websiteForm.websiteType}
+                    onChange={(e) => setWebsiteForm({ ...websiteForm, websiteType: e.target.value as WebsiteType })}
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                  >
+                    {WEBSITE_TYPES.map(type => (
+                      <option key={type.id} value={type.id}>{type.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Tier Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">Tier</label>
+                  <select
+                    value={websiteForm.tier}
+                    onChange={(e) => setWebsiteForm({ ...websiteForm, tier: e.target.value as WebsiteTier })}
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                  >
+                    {WEBSITE_TIERS.map(tier => (
+                      <option key={tier.id} value={tier.id}>{tier.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Style Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">Style</label>
+                  <select
+                    value={websiteForm.style}
+                    onChange={(e) => setWebsiteForm({ ...websiteForm, style: e.target.value as WebsiteStyle })}
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                  >
+                    {WEBSITE_STYLES.map(style => (
+                      <option key={style.id} value={style.id}>{style.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Features Multi-Select */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-2">Features</label>
+                <div className="flex flex-wrap gap-2">
+                  {WEBSITE_FEATURES.map(feature => {
+                    const isSelected = websiteForm.features.includes(feature.id as WebsiteFeature);
+                    return (
+                      <button
+                        key={feature.id}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setWebsiteForm({
+                              ...websiteForm,
+                              features: websiteForm.features.filter(f => f !== feature.id)
+                            });
+                          } else {
+                            setWebsiteForm({
+                              ...websiteForm,
+                              features: [...websiteForm.features, feature.id as WebsiteFeature]
+                            });
+                          }
+                        }}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all flex items-center gap-1.5 ${
+                          isSelected
+                            ? 'bg-gold-100 dark:bg-gold-900/30 text-gray-700 dark:text-gray-300 dark:text-gold-400 border border-gold-300 dark:border-gold-700'
+                            : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-dark-muted border border-transparent hover:border-gray-300 dark:hover:border-dark-border'
+                        }`}
+                      >
+                        {feature.name}
+                        {isSelected && <X size={12} className="ml-0.5" />}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-gray-500 mt-1.5">Select the features included in this template</p>
               </div>
 
               {/* Preview Mode Toggle */}
@@ -20524,7 +21453,7 @@ export const WebsiteLibraryView: React.FC = () => {
                     onClick={() => setWebsiteForm({ ...websiteForm, previewMode: 'live' })}
                     className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border transition-all ${
                       websiteForm.previewMode === 'live'
-                        ? 'border-gold-500 bg-gold-50 dark:bg-gold-900/20 text-gold-700 dark:text-gold-400'
+                        ? 'border-gold-500 bg-gray-100 dark:bg-dark-elevated text-gray-800 dark:text-gray-200'
                         : 'border-gray-200 dark:border-dark-border text-gray-600 dark:text-dark-muted hover:border-gray-300'
                     }`}
                   >
@@ -20536,7 +21465,7 @@ export const WebsiteLibraryView: React.FC = () => {
                     onClick={() => setWebsiteForm({ ...websiteForm, previewMode: 'thumbnail' })}
                     className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border transition-all ${
                       websiteForm.previewMode === 'thumbnail'
-                        ? 'border-gold-500 bg-gold-50 dark:bg-gold-900/20 text-gold-700 dark:text-gold-400'
+                        ? 'border-gold-500 bg-gray-100 dark:bg-dark-elevated text-gray-800 dark:text-gray-200'
                         : 'border-gray-200 dark:border-dark-border text-gray-600 dark:text-dark-muted hover:border-gray-300'
                     }`}
                   >
@@ -20637,9 +21566,9 @@ export const WebsiteLibraryView: React.FC = () => {
 
       {/* Delete Website Confirmation */}
       {showDeleteConfirm && websiteToDelete && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowDeleteConfirm(false)}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowDeleteConfirm(false)}>
           <div
-            className="bg-white dark:bg-dark-card rounded-xl shadow-xl w-full max-w-sm mx-4 p-5"
+            className="bg-white dark:bg-dark-card rounded-xl shadow-xl w-full max-w-sm p-5"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center mb-4">
@@ -20660,7 +21589,7 @@ export const WebsiteLibraryView: React.FC = () => {
               </button>
               <button
                 onClick={handleDeleteWebsite}
-                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
+                className="flex-1 px-4 py-2 bg-gray-400 dark:bg-gray-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
               >
                 Delete
               </button>
@@ -20738,6 +21667,6576 @@ export const WebsiteLibraryView: React.FC = () => {
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// --- Leads View ---
+// Local Lead type for state management
+interface LocalLead {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  company: string;
+  website: string;
+  websiteRating: WebsiteRating | null;
+  industry: LeadIndustry;
+  status: LeadStatus;
+  notes: string;
+  source?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Star rating component
+const StarRating: React.FC<{
+  rating: WebsiteRating | null;
+  onChange?: (rating: WebsiteRating) => void;
+  readonly?: boolean;
+  size?: 'sm' | 'md';
+}> = ({ rating, onChange, readonly = false, size = 'md' }) => {
+  const starSize = size === 'sm' ? 14 : 18;
+
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button
+          key={star}
+          type="button"
+          onClick={() => !readonly && onChange?.(star as WebsiteRating)}
+          disabled={readonly}
+          className={`${readonly ? 'cursor-default' : 'cursor-pointer hover:scale-110'} transition-transform`}
+        >
+          <Star
+            size={starSize}
+            className={`${
+              rating && star <= rating
+                ? 'fill-amber-400 text-amber-400'
+                : 'fill-gray-200 text-gray-200 dark:fill-dark-border dark:text-dark-border'
+            }`}
+          />
+        </button>
+      ))}
+    </div>
+  );
+};
+
+export const LeadsView: React.FC = () => {
+  const { showToast } = useToast();
+
+  // State
+  const [leads, setLeads] = useState<LocalLead[]>(() => {
+    return safeParseStorage<LocalLead[]>('tawfeeq_leads', []);
+  });
+  const [selectedIndustry, setSelectedIndustry] = useState<LeadIndustry>('plumbing');
+  const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [editingLead, setEditingLead] = useState<LocalLead | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [draggedLead, setDraggedLead] = useState<LocalLead | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [leadToDelete, setLeadToDelete] = useState<LocalLead | null>(null);
+  const [selectedLead, setSelectedLead] = useState<LocalLead | null>(null);
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+
+  // Inline add row state
+  const [inlineAdd, setInlineAdd] = useState({
+    name: '',
+    company: '',
+    website: '',
+    websiteRating: null as WebsiteRating | null,
+    phone: '',
+    email: '',
+    status: 'new' as LeadStatus,
+    notes: '',
+  });
+  const [isAddingInline, setIsAddingInline] = useState(false);
+
+  // Sorting state
+  const [sortField, setSortField] = useState<'name' | 'company' | 'website' | 'websiteRating' | 'status' | 'createdAt'>('createdAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // New lead form state (for modal - kept for edit functionality)
+  const [newLead, setNewLead] = useState<Partial<LocalLead>>({
+    name: '',
+    email: '',
+    phone: '',
+    company: '',
+    website: '',
+    websiteRating: null,
+    industry: 'plumbing',
+    status: 'new',
+    notes: '',
+    source: '',
+  });
+
+  // CSV import state
+  const [csvData, setCsvData] = useState<string>('');
+  const [csvPreview, setCsvPreview] = useState<Partial<LocalLead>[]>([]);
+
+  // Persist to localStorage
+  useEffect(() => {
+    localStorage.setItem('tawfeeq_leads', JSON.stringify(leads));
+  }, [leads]);
+
+  // Filter leads by selected industry and search
+  const filteredLeads = React.useMemo(() => {
+    let result = leads.filter(l => l.industry === selectedIndustry);
+
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(l =>
+        l.name.toLowerCase().includes(q) ||
+        l.company.toLowerCase().includes(q) ||
+        l.email.toLowerCase().includes(q) ||
+        l.website.toLowerCase().includes(q)
+      );
+    }
+
+    return result;
+  }, [leads, selectedIndustry, searchQuery]);
+
+  // Sorted leads for table view
+  const sortedLeads = React.useMemo(() => {
+    return [...filteredLeads].sort((a, b) => {
+      let aVal: string | number | null = null;
+      let bVal: string | number | null = null;
+
+      switch (sortField) {
+        case 'name':
+          aVal = a.name.toLowerCase();
+          bVal = b.name.toLowerCase();
+          break;
+        case 'company':
+          aVal = a.company.toLowerCase();
+          bVal = b.company.toLowerCase();
+          break;
+        case 'website':
+          aVal = a.website.toLowerCase();
+          bVal = b.website.toLowerCase();
+          break;
+        case 'websiteRating':
+          aVal = a.websiteRating || 0;
+          bVal = b.websiteRating || 0;
+          break;
+        case 'status':
+          const statusOrder = { new: 0, contacted: 1, converted: 2, lost: 3 };
+          aVal = statusOrder[a.status];
+          bVal = statusOrder[b.status];
+          break;
+        case 'createdAt':
+          aVal = new Date(a.createdAt).getTime();
+          bVal = new Date(b.createdAt).getTime();
+          break;
+      }
+
+      if (aVal === null || bVal === null) return 0;
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [filteredLeads, sortField, sortDirection]);
+
+  // Toggle sort handler
+  const handleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Group leads by status for kanban
+  const leadsByStatus = React.useMemo(() => {
+    const grouped: Record<LeadStatus, LocalLead[]> = {
+      new: [],
+      contacted: [],
+      converted: [],
+      lost: [],
+    };
+
+    filteredLeads.forEach(lead => {
+      grouped[lead.status].push(lead);
+    });
+
+    return grouped;
+  }, [filteredLeads]);
+
+  // Count leads per industry
+  const industryCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    leads.forEach(l => {
+      counts[l.industry] = (counts[l.industry] || 0) + 1;
+    });
+    return counts;
+  }, [leads]);
+
+  // Handlers
+  const handleAddLead = () => {
+    if (!newLead.name?.trim()) {
+      showToast('error', 'Lead name is required');
+      return;
+    }
+
+    const lead: LocalLead = {
+      id: generateId(),
+      name: newLead.name.trim(),
+      email: newLead.email || '',
+      phone: newLead.phone || '',
+      company: newLead.company || '',
+      website: newLead.website || '',
+      websiteRating: newLead.websiteRating || null,
+      industry: newLead.industry || selectedIndustry,
+      status: newLead.status || 'new',
+      notes: newLead.notes || '',
+      source: newLead.source || '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setLeads(prev => [lead, ...prev]);
+    setShowAddModal(false);
+    setNewLead({
+      name: '',
+      email: '',
+      phone: '',
+      company: '',
+      website: '',
+      websiteRating: null,
+      industry: selectedIndustry,
+      status: 'new',
+      notes: '',
+      source: '',
+    });
+    showToast('success', 'Lead added successfully');
+  };
+
+  const handleEditLead = () => {
+    if (!editingLead) return;
+
+    setLeads(prev =>
+      prev.map(l =>
+        l.id === editingLead.id
+          ? { ...editingLead, updatedAt: new Date().toISOString() }
+          : l
+      )
+    );
+    setShowEditModal(false);
+    setEditingLead(null);
+    showToast('success', 'Lead updated successfully');
+  };
+
+  const handleDeleteLead = () => {
+    if (!leadToDelete) return;
+
+    setLeads(prev => prev.filter(l => l.id !== leadToDelete.id));
+    setShowDeleteConfirm(false);
+    setLeadToDelete(null);
+    showToast('success', 'Lead deleted');
+  };
+
+  const handleStatusChange = (leadId: string, newStatus: LeadStatus) => {
+    setLeads(prev =>
+      prev.map(l =>
+        l.id === leadId
+          ? { ...l, status: newStatus, updatedAt: new Date().toISOString() }
+          : l
+      )
+    );
+  };
+
+  // Inline rating change handler
+  const handleRatingChange = (leadId: string, rating: WebsiteRating | null) => {
+    setLeads(prev =>
+      prev.map(l =>
+        l.id === leadId
+          ? { ...l, websiteRating: rating, updatedAt: new Date().toISOString() }
+          : l
+      )
+    );
+  };
+
+  // Inline add handler
+  const handleInlineAdd = () => {
+    if (!inlineAdd.name.trim()) {
+      showToast('error', 'Lead name is required');
+      return;
+    }
+
+    const lead: LocalLead = {
+      id: generateId(),
+      name: inlineAdd.name.trim(),
+      email: inlineAdd.email,
+      phone: inlineAdd.phone,
+      company: inlineAdd.company,
+      website: inlineAdd.website,
+      websiteRating: inlineAdd.websiteRating,
+      industry: selectedIndustry,
+      status: inlineAdd.status,
+      notes: inlineAdd.notes,
+      source: 'inline',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setLeads(prev => [lead, ...prev]);
+    setInlineAdd({
+      name: '',
+      company: '',
+      website: '',
+      websiteRating: null,
+      phone: '',
+      email: '',
+      status: 'new',
+      notes: '',
+    });
+    setIsAddingInline(false);
+    showToast('success', 'Lead added');
+  };
+
+  // Handle inline add key press
+  const handleInlineKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleInlineAdd();
+    } else if (e.key === 'Escape') {
+      setIsAddingInline(false);
+      setInlineAdd({
+        name: '',
+        company: '',
+        website: '',
+        websiteRating: null,
+        phone: '',
+        email: '',
+        status: 'new',
+        notes: '',
+      });
+    }
+  };
+
+  // Inline notes update handler
+  const handleNotesChange = (leadId: string, notes: string) => {
+    setLeads(prev =>
+      prev.map(l =>
+        l.id === leadId
+          ? { ...l, notes, updatedAt: new Date().toISOString() }
+          : l
+      )
+    );
+  };
+
+  // Update selected lead (for detail panel)
+  const handleUpdateSelectedLead = (updates: Partial<LocalLead>) => {
+    if (!selectedLead) return;
+
+    const updatedLead = { ...selectedLead, ...updates, updatedAt: new Date().toISOString() };
+    setSelectedLead(updatedLead);
+    setLeads(prev =>
+      prev.map(l =>
+        l.id === selectedLead.id ? updatedLead : l
+      )
+    );
+  };
+
+  // Keep selectedLead in sync when leads array changes
+  React.useEffect(() => {
+    if (selectedLead) {
+      const updated = leads.find(l => l.id === selectedLead.id);
+      if (updated && JSON.stringify(updated) !== JSON.stringify(selectedLead)) {
+        setSelectedLead(updated);
+      } else if (!updated) {
+        setSelectedLead(null);
+      }
+    }
+  }, [leads]);
+
+  // Drag and drop handlers
+  const [dragOverStatus, setDragOverStatus] = useState<LeadStatus | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, lead: LocalLead) => {
+    setDraggedLead(lead);
+    // Set drag data - required for drag to work properly in some browsers
+    e.dataTransfer.setData('text/plain', lead.id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragEnd = () => {
+    setDraggedLead(null);
+    setDragOverStatus(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDragEnter = (e: React.DragEvent, status: LeadStatus) => {
+    e.preventDefault();
+    if (draggedLead && draggedLead.status !== status) {
+      setDragOverStatus(status);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only clear if leaving the column entirely (not entering a child)
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    const currentTarget = e.currentTarget as HTMLElement;
+    if (!currentTarget.contains(relatedTarget)) {
+      setDragOverStatus(null);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, status: LeadStatus) => {
+    e.preventDefault();
+    if (draggedLead && draggedLead.status !== status) {
+      handleStatusChange(draggedLead.id, status);
+      showToast('success', `Lead moved to ${LEAD_STATUSES.find(s => s.id === status)?.name}`);
+    }
+    setDraggedLead(null);
+    setDragOverStatus(null);
+  };
+
+  // Bulk selection handlers
+  const toggleLeadSelection = (leadId: string) => {
+    setSelectedLeadIds(prev => {
+      const next = new Set(prev);
+      if (next.has(leadId)) {
+        next.delete(leadId);
+      } else {
+        next.add(leadId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedLeadIds.size === sortedLeads.length) {
+      setSelectedLeadIds(new Set());
+    } else {
+      setSelectedLeadIds(new Set(sortedLeads.map(l => l.id)));
+    }
+  };
+
+  const handleBulkStatusChange = (status: LeadStatus) => {
+    if (selectedLeadIds.size === 0) return;
+    setLeads(prev => prev.map(lead =>
+      selectedLeadIds.has(lead.id) ? { ...lead, status, updatedAt: new Date().toISOString() } : lead
+    ));
+    showToast('success', `${selectedLeadIds.size} leads updated to ${LEAD_STATUSES.find(s => s.id === status)?.name}`);
+    setSelectedLeadIds(new Set());
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedLeadIds.size === 0) return;
+    setLeads(prev => prev.filter(lead => !selectedLeadIds.has(lead.id)));
+    showToast('success', `${selectedLeadIds.size} leads deleted`);
+    setSelectedLeadIds(new Set());
+  };
+
+  // CSV Import handlers
+  const handleCSVParse = () => {
+    if (!csvData.trim()) {
+      showToast('error', 'Please paste CSV data');
+      return;
+    }
+
+    const lines = csvData.trim().split('\n');
+    if (lines.length < 2) {
+      showToast('error', 'CSV must have a header row and at least one data row');
+      return;
+    }
+
+    const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
+    const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('business'));
+    const emailIdx = headers.findIndex(h => h.includes('email'));
+    const phoneIdx = headers.findIndex(h => h.includes('phone') || h.includes('tel'));
+    const companyIdx = headers.findIndex(h => h.includes('company') || h.includes('business'));
+    const websiteIdx = headers.findIndex(h => h.includes('website') || h.includes('url') || h.includes('site'));
+    const ratingIdx = headers.findIndex(h => h.includes('rating') || h.includes('score'));
+
+    if (nameIdx === -1) {
+      showToast('error', 'CSV must have a "name" or "business" column');
+      return;
+    }
+
+    const parsed: Partial<LocalLead>[] = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(v => v.trim().replace(/^["']|["']$/g, ''));
+
+      if (!values[nameIdx]) continue;
+
+      const lead: Partial<LocalLead> = {
+        name: values[nameIdx] || '',
+        email: emailIdx >= 0 ? values[emailIdx] || '' : '',
+        phone: phoneIdx >= 0 ? values[phoneIdx] || '' : '',
+        company: companyIdx >= 0 ? values[companyIdx] || '' : '',
+        website: websiteIdx >= 0 ? values[websiteIdx] || '' : '',
+        websiteRating: ratingIdx >= 0 ? (parseInt(values[ratingIdx]) as WebsiteRating) || null : null,
+        industry: selectedIndustry,
+        status: 'new',
+        notes: '',
+        source: 'csv-import',
+      };
+
+      parsed.push(lead);
+    }
+
+    if (parsed.length === 0) {
+      showToast('error', 'No valid leads found in CSV');
+      return;
+    }
+
+    setCsvPreview(parsed);
+    showToast('success', `Found ${parsed.length} leads to import`);
+  };
+
+  const handleCSVImport = () => {
+    const newLeads: LocalLead[] = csvPreview.map(l => ({
+      id: generateId(),
+      name: l.name || '',
+      email: l.email || '',
+      phone: l.phone || '',
+      company: l.company || '',
+      website: l.website || '',
+      websiteRating: l.websiteRating || null,
+      industry: l.industry || selectedIndustry,
+      status: l.status || 'new',
+      notes: l.notes || '',
+      source: l.source || 'csv-import',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }));
+
+    setLeads(prev => [...newLeads, ...prev]);
+    setShowImportModal(false);
+    setCsvData('');
+    setCsvPreview([]);
+    showToast('success', `Imported ${newLeads.length} leads`);
+  };
+
+  // Lead card component
+  const LeadCard: React.FC<{ lead: LocalLead }> = ({ lead }) => (
+    <div
+      draggable
+      onDragStart={(e) => handleDragStart(e, lead)}
+      onDragEnd={handleDragEnd}
+      onClick={() => setSelectedLead(lead)}
+      className={`bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg p-3 cursor-pointer hover:shadow-md hover:border-gold-300 dark:hover:border-gold-700 transition-all ${
+        draggedLead?.id === lead.id ? 'opacity-50 scale-95 cursor-grabbing' : ''
+      }`}
+    >
+      <div className="flex items-start justify-between mb-2">
+        <h4 className="font-medium text-gray-900 dark:text-dark-text text-sm truncate flex-1 hover:text-gray-600 dark:text-gray-400 transition-colors">
+          {lead.name}
+        </h4>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedLead(lead);
+            }}
+            className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-dark-elevated dark:hover:bg-gold-900/20 rounded"
+            title="View Details"
+          >
+            <Eye size={14} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setLeadToDelete(lead);
+              setShowDeleteConfirm(true);
+            }}
+            className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+            title="Delete"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
+
+      {lead.company && (
+        <p className="text-xs text-gray-500 dark:text-dark-muted mb-1 truncate">
+          {lead.company}
+        </p>
+      )}
+
+      {lead.website && (
+        <a
+          href={lead.website.startsWith('http') ? lead.website : `https://${lead.website}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="text-xs text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 flex items-center gap-1 mb-2 truncate"
+        >
+          <Globe size={12} />
+          {lead.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+        </a>
+      )}
+
+      <div className="flex items-center justify-between mt-2">
+        <StarRating rating={lead.websiteRating} readonly size="sm" />
+      </div>
+    </div>
+  );
+
+  // Status column component
+  const StatusColumn: React.FC<{ status: LeadStatus; leads: LocalLead[] }> = ({ status, leads }) => {
+    const statusConfig = LEAD_STATUSES.find(s => s.id === status);
+    const isDropTarget = draggedLead && draggedLead.status !== status;
+    const isActiveDropZone = dragOverStatus === status;
+
+    return (
+      <div
+        onDragOver={handleDragOver}
+        onDragEnter={(e) => handleDragEnter(e, status)}
+        onDragLeave={handleDragLeave}
+        onDrop={(e) => handleDrop(e, status)}
+        className={`flex-1 min-w-[280px] rounded-xl p-4 transition-all duration-200 ${
+          isActiveDropZone
+            ? 'bg-gold-100 dark:bg-gold-900/30 ring-2 ring-gold-500 ring-opacity-70 scale-[1.02]'
+            : isDropTarget
+              ? 'bg-gray-100 dark:bg-dark-elevated ring-2 ring-gold-400 ring-opacity-30'
+              : 'bg-gray-50 dark:bg-dark-bg'
+        }`}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className={`w-3 h-3 rounded-full ${statusConfig?.color}`} />
+            <h3 className="font-semibold text-gray-700 dark:text-dark-text">
+              {statusConfig?.name}
+            </h3>
+            <span className="text-xs bg-gray-200 dark:bg-dark-elevated text-gray-600 dark:text-dark-muted px-2 py-0.5 rounded-full">
+              {leads.length}
+            </span>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {leads.map(lead => (
+            <LeadCard key={lead.id} lead={lead} />
+          ))}
+
+          {leads.length === 0 && (
+            <div className="text-center py-8 text-gray-400 dark:text-dark-muted text-sm">
+              No leads
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-dark-text">Leads</h2>
+          <p className="text-gray-500 dark:text-dark-muted mt-1">
+            {leads.length} total leads across all industries
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {/* View Toggle */}
+          <div className="flex items-center bg-gray-100 dark:bg-dark-elevated rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'table'
+                  ? 'bg-white dark:bg-dark-card text-gray-900 dark:text-dark-text shadow-sm'
+                  : 'text-gray-600 dark:text-dark-muted hover:text-gray-900 dark:hover:text-dark-text'
+              }`}
+            >
+              <Table2 size={16} />
+              Table
+            </button>
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'kanban'
+                  ? 'bg-white dark:bg-dark-card text-gray-900 dark:text-dark-text shadow-sm'
+                  : 'text-gray-600 dark:text-dark-muted hover:text-gray-900 dark:hover:text-dark-text'
+              }`}
+            >
+              <FolderKanban size={16} />
+              Kanban
+            </button>
+          </div>
+
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-200 dark:border-dark-border rounded-lg text-gray-700 dark:text-dark-text hover:bg-gray-50 dark:hover:bg-dark-elevated transition-colors"
+          >
+            <Upload size={18} />
+            Import CSV
+          </button>
+          {viewMode === 'kanban' && (
+            <button
+              onClick={() => {
+                setNewLead(prev => ({ ...prev, industry: selectedIndustry }));
+                setShowAddModal(true);
+              }}
+              className="flex items-center gap-2 bg-gold-500 text-white px-4 py-2 rounded-lg hover:bg-gold-600 transition-colors"
+            >
+              <Plus size={18} />
+              Add Lead
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Industry Tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2">
+        {LEAD_INDUSTRIES.map(industry => (
+          <button
+            key={industry.id}
+            onClick={() => setSelectedIndustry(industry.id)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
+              selectedIndustry === industry.id
+                ? 'bg-gold-500 text-white'
+                : 'bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border text-gray-700 dark:text-dark-text hover:bg-gray-50 dark:hover:bg-dark-elevated'
+            }`}
+          >
+            <span>{industry.icon}</span>
+            <span className="font-medium">{industry.name}</span>
+            {industryCounts[industry.id] > 0 && (
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                selectedIndustry === industry.id
+                  ? 'bg-white/20 text-white'
+                  : 'bg-gray-100 dark:bg-dark-elevated text-gray-600 dark:text-dark-muted'
+              }`}>
+                {industryCounts[industry.id]}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div className="relative max-w-md">
+        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search leads..."
+          className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500"
+        />
+      </div>
+
+      {/* Bulk Actions Bar */}
+      {selectedLeadIds.size > 0 && (
+        <div className="bg-gold-50 dark:bg-gold-900/20 border border-gold-200 dark:border-gold-800 rounded-xl p-3 flex items-center justify-between">
+          <span className="text-sm font-medium text-gold-800 dark:text-gold-200">
+            {selectedLeadIds.size} lead{selectedLeadIds.size !== 1 ? 's' : ''} selected
+          </span>
+          <div className="flex items-center gap-2">
+            <select
+              onChange={(e) => {
+                if (e.target.value) {
+                  handleBulkStatusChange(e.target.value as LeadStatus);
+                  e.target.value = '';
+                }
+              }}
+              className="text-sm border border-gold-300 dark:border-gold-700 rounded-lg px-3 py-1.5 bg-white dark:bg-dark-card text-gray-700 dark:text-dark-text focus:ring-2 focus:ring-gold-500"
+              defaultValue=""
+            >
+              <option value="" disabled>Change status...</option>
+              {LEAD_STATUSES.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+            <button
+              onClick={handleBulkDelete}
+              className="text-sm px-3 py-1.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+            >
+              Delete
+            </button>
+            <button
+              onClick={() => setSelectedLeadIds(new Set())}
+              className="text-sm px-3 py-1.5 bg-gray-100 dark:bg-dark-elevated text-gray-700 dark:text-dark-text rounded-lg hover:bg-gray-200 dark:hover:bg-dark-hover transition-colors"
+            >
+              Clear selection
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Table View */}
+      {viewMode === 'table' && (
+        <div className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-dark-elevated border-b border-gray-200 dark:border-dark-border">
+                <tr>
+                  <th className="px-4 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={sortedLeads.length > 0 && selectedLeadIds.size === sortedLeads.length}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 rounded border-gray-300 dark:border-dark-border text-gold-500 focus:ring-gold-500"
+                      aria-label="Select all leads"
+                    />
+                  </th>
+                  <th
+                    onClick={() => handleSort('name')}
+                    className="text-left px-4 py-3 text-xs font-semibold text-gray-600 dark:text-dark-muted uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-dark-hover select-none min-w-[200px]"
+                  >
+                    <div className="flex items-center gap-1">
+                      Name / Company
+                      {sortField === 'name' && (
+                        sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('website')}
+                    className="text-left px-4 py-3 text-xs font-semibold text-gray-600 dark:text-dark-muted uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-dark-hover select-none"
+                  >
+                    <div className="flex items-center gap-1">
+                      Website
+                      {sortField === 'website' && (
+                        sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('websiteRating')}
+                    className="text-left px-4 py-3 text-xs font-semibold text-gray-600 dark:text-dark-muted uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-dark-hover select-none"
+                  >
+                    <div className="flex items-center gap-1">
+                      Rating
+                      {sortField === 'websiteRating' && (
+                        sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                      )}
+                    </div>
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 dark:text-dark-muted uppercase tracking-wider whitespace-nowrap">
+                    Phone
+                  </th>
+                  <th
+                    onClick={() => handleSort('status')}
+                    className="text-left px-4 py-3 text-xs font-semibold text-gray-600 dark:text-dark-muted uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-dark-hover select-none"
+                  >
+                    <div className="flex items-center gap-1">
+                      Status
+                      {sortField === 'status' && (
+                        sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                      )}
+                    </div>
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 dark:text-dark-muted uppercase tracking-wider min-w-[200px]">
+                    Notes
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 dark:text-dark-muted uppercase tracking-wider w-20">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-dark-border">
+                {/* Inline Add Row */}
+                <tr className="bg-gold-50/50 dark:bg-gold-900/10 hover:bg-gold-50 dark:hover:bg-gold-900/20">
+                  <td className="px-4 py-2"></td>
+                  <td className="px-4 py-2">
+                    <div className="space-y-1">
+                      <input
+                        type="text"
+                        value={inlineAdd.name}
+                        onChange={(e) => setInlineAdd(prev => ({ ...prev, name: e.target.value }))}
+                        onKeyDown={handleInlineKeyDown}
+                        onFocus={() => setIsAddingInline(true)}
+                        placeholder="+ Add new lead..."
+                        className="w-full bg-transparent border-none focus:outline-none focus:ring-0 text-sm font-medium text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-muted"
+                      />
+                      {isAddingInline && (
+                        <input
+                          type="text"
+                          value={inlineAdd.company}
+                          onChange={(e) => setInlineAdd(prev => ({ ...prev, company: e.target.value }))}
+                          onKeyDown={handleInlineKeyDown}
+                          placeholder="Company name"
+                          className="w-full bg-transparent border-none focus:outline-none focus:ring-0 text-xs text-gray-500 dark:text-dark-muted placeholder-gray-400"
+                        />
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-2">
+                    {isAddingInline && (
+                      <input
+                        type="text"
+                        value={inlineAdd.website}
+                        onChange={(e) => setInlineAdd(prev => ({ ...prev, website: e.target.value }))}
+                        onKeyDown={handleInlineKeyDown}
+                        placeholder="website.com"
+                        className="w-full bg-transparent border-none focus:outline-none focus:ring-0 text-sm text-gray-900 dark:text-dark-text placeholder-gray-400"
+                      />
+                    )}
+                  </td>
+                  <td className="px-4 py-2">
+                    {isAddingInline && (
+                      <StarRating
+                        rating={inlineAdd.websiteRating}
+                        onChange={(r) => setInlineAdd(prev => ({ ...prev, websiteRating: r }))}
+                        size="sm"
+                      />
+                    )}
+                  </td>
+                  <td className="px-4 py-2">
+                    {isAddingInline && (
+                      <input
+                        type="tel"
+                        value={inlineAdd.phone}
+                        onChange={(e) => setInlineAdd(prev => ({ ...prev, phone: e.target.value }))}
+                        onKeyDown={handleInlineKeyDown}
+                        placeholder="Phone number"
+                        className="w-full bg-transparent border-none focus:outline-none focus:ring-0 text-sm text-gray-900 dark:text-dark-text placeholder-gray-400 whitespace-nowrap"
+                      />
+                    )}
+                  </td>
+                  <td className="px-4 py-2">
+                    {isAddingInline && (
+                      <select
+                        value={inlineAdd.status}
+                        onChange={(e) => setInlineAdd(prev => ({ ...prev, status: e.target.value as LeadStatus }))}
+                        className="bg-transparent border-none focus:outline-none focus:ring-0 text-sm text-gray-900 dark:text-dark-text cursor-pointer"
+                      >
+                        {LEAD_STATUSES.map(s => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                    )}
+                  </td>
+                  <td className="px-4 py-2">
+                    {isAddingInline && (
+                      <input
+                        type="text"
+                        value={inlineAdd.notes}
+                        onChange={(e) => setInlineAdd(prev => ({ ...prev, notes: e.target.value }))}
+                        onKeyDown={handleInlineKeyDown}
+                        placeholder="Add notes..."
+                        className="w-full bg-transparent border-none focus:outline-none focus:ring-0 text-sm text-gray-900 dark:text-dark-text placeholder-gray-400"
+                      />
+                    )}
+                  </td>
+                  <td className="px-4 py-2">
+                    {isAddingInline && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={handleInlineAdd}
+                          className="p-1 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/20 rounded"
+                          title="Save (Enter)"
+                        >
+                          <Check size={16} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsAddingInline(false);
+                            setInlineAdd({
+                              name: '',
+                              company: '',
+                              website: '',
+                              websiteRating: null,
+                              phone: '',
+                              email: '',
+                              status: 'new',
+                              notes: '',
+                            });
+                          }}
+                          className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-dark-elevated rounded"
+                          title="Cancel (Esc)"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+
+                {/* Lead Rows */}
+                {sortedLeads.map(lead => (
+                  <tr
+                    key={lead.id}
+                    onClick={() => setSelectedLead(lead)}
+                    className={`hover:bg-gray-50 dark:hover:bg-dark-hover group cursor-pointer ${selectedLeadIds.has(lead.id) ? 'bg-gold-50 dark:bg-gold-900/10' : ''}`}
+                  >
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedLeadIds.has(lead.id)}
+                        onChange={() => toggleLeadSelection(lead.id)}
+                        className="w-4 h-4 rounded border-gray-300 dark:border-dark-border text-gold-500 focus:ring-gold-500"
+                        aria-label={`Select ${lead.name}`}
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div>
+                        <span className="text-sm font-medium text-gray-900 dark:text-dark-text block hover:text-gray-600 dark:text-gray-400 transition-colors">
+                          {lead.name}
+                        </span>
+                        {lead.company && (
+                          <span className="text-xs text-gray-500 dark:text-dark-muted">
+                            {lead.company}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      {lead.website ? (
+                        <a
+                          href={lead.website.startsWith('http') ? lead.website : `https://${lead.website}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 hover:underline flex items-center gap-1"
+                        >
+                          <Globe size={14} />
+                          {lead.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                        </a>
+                      ) : (
+                        <span className="text-sm text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <StarRating
+                        rating={lead.websiteRating}
+                        onChange={(r) => handleRatingChange(lead.id, r)}
+                        size="sm"
+                      />
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      {lead.phone ? (
+                        <a href={`tel:${lead.phone}`} className="text-sm text-gray-600 dark:text-dark-muted hover:text-gray-900">
+                          {lead.phone}
+                        </a>
+                      ) : (
+                        <span className="text-sm text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <div className="relative inline-block">
+                        <select
+                          value={lead.status}
+                          onChange={(e) => handleStatusChange(lead.id, e.target.value as LeadStatus)}
+                          className={`text-xs font-medium pl-2 pr-6 py-1 rounded-lg border cursor-pointer focus:ring-2 focus:ring-gray-500 focus:outline-none appearance-none ${
+                            lead.status === 'new' ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' :
+                            lead.status === 'contacted' ? 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800' :
+                            lead.status === 'converted' ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800' :
+                            'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800'
+                          }`}
+                        >
+                          {LEAD_STATUSES.map(s => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                        </select>
+                        <ChevronDown size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-current opacity-60" />
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 max-w-[200px]" onClick={(e) => e.stopPropagation()}>
+                      <div className="relative group/notes">
+                        <input
+                          type="text"
+                          value={lead.notes}
+                          onChange={(e) => handleNotesChange(lead.id, e.target.value)}
+                          placeholder="Add notes..."
+                          className="w-full text-sm text-gray-600 dark:text-dark-muted bg-transparent border-none focus:outline-none focus:ring-0 placeholder-gray-400 hover:bg-gray-50 dark:hover:bg-dark-elevated rounded px-2 py-1 -mx-2 -my-1 truncate"
+                          title={lead.notes || undefined}
+                        />
+                        {/* Full notes tooltip on hover */}
+                        {lead.notes && lead.notes.length > 30 && (
+                          <div className="absolute left-0 top-full mt-1 z-50 hidden group-hover/notes:block">
+                            <div className="bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded-lg px-3 py-2 max-w-[300px] shadow-lg">
+                              {lead.notes}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => setSelectedLead(lead)}
+                          className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-dark-hover rounded"
+                          title="View Details"
+                          aria-label={`View details for ${lead.name}`}
+                        >
+                          <Eye size={14} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setLeadToDelete(lead);
+                            setShowDeleteConfirm(true);
+                          }}
+                          className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-dark-hover rounded"
+                          title="Delete"
+                          aria-label={`Delete ${lead.name}`}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+
+                {/* Empty state */}
+                {sortedLeads.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-12 text-center">
+                      <div className="text-gray-400 dark:text-dark-muted">
+                        <Users size={40} className="mx-auto mb-3 opacity-50" />
+                        <p className="text-sm">No leads in this industry yet</p>
+                        <p className="text-xs mt-1">Start typing in the row above to add your first lead</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Kanban Board */}
+      {viewMode === 'kanban' && (
+        <div className="flex gap-4 overflow-x-auto pb-4">
+          <StatusColumn status="new" leads={leadsByStatus.new} />
+          <StatusColumn status="contacted" leads={leadsByStatus.contacted} />
+          <StatusColumn status="converted" leads={leadsByStatus.converted} />
+          <StatusColumn status="lost" leads={leadsByStatus.lost} />
+        </div>
+      )}
+
+      {/* Add/Edit Modal */}
+      {(showAddModal || showEditModal) && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-dark-card rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-border">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-dark-text">
+                {showEditModal ? 'Edit Lead' : 'Add New Lead'}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  setShowEditModal(false);
+                  setEditingLead(null);
+                }}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-dark-elevated rounded-lg"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              {/* Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                  Name *
+                </label>
+                <input
+                  type="text"
+                  value={showEditModal ? editingLead?.name || '' : newLead.name || ''}
+                  onChange={(e) => showEditModal
+                    ? setEditingLead(prev => prev ? { ...prev, name: e.target.value } : null)
+                    : setNewLead(prev => ({ ...prev, name: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-900 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  placeholder="Business or contact name"
+                />
+              </div>
+
+              {/* Company */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                  Company
+                </label>
+                <input
+                  type="text"
+                  value={showEditModal ? editingLead?.company || '' : newLead.company || ''}
+                  onChange={(e) => showEditModal
+                    ? setEditingLead(prev => prev ? { ...prev, company: e.target.value } : null)
+                    : setNewLead(prev => ({ ...prev, company: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-900 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  placeholder="Company name"
+                />
+              </div>
+
+              {/* Email & Phone */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={showEditModal ? editingLead?.email || '' : newLead.email || ''}
+                    onChange={(e) => showEditModal
+                      ? setEditingLead(prev => prev ? { ...prev, email: e.target.value } : null)
+                      : setNewLead(prev => ({ ...prev, email: e.target.value }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-900 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500"
+                    placeholder="email@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                    Phone
+                  </label>
+                  <input
+                    type="tel"
+                    value={showEditModal ? editingLead?.phone || '' : newLead.phone || ''}
+                    onChange={(e) => showEditModal
+                      ? setEditingLead(prev => prev ? { ...prev, phone: e.target.value } : null)
+                      : setNewLead(prev => ({ ...prev, phone: e.target.value }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-900 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500"
+                    placeholder="+44 123 456 7890"
+                  />
+                </div>
+              </div>
+
+              {/* Website */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                  Website
+                </label>
+                <input
+                  type="url"
+                  value={showEditModal ? editingLead?.website || '' : newLead.website || ''}
+                  onChange={(e) => showEditModal
+                    ? setEditingLead(prev => prev ? { ...prev, website: e.target.value } : null)
+                    : setNewLead(prev => ({ ...prev, website: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-900 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  placeholder="https://example.com"
+                />
+              </div>
+
+              {/* Website Rating */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-2">
+                  Website Rating
+                </label>
+                <StarRating
+                  rating={showEditModal ? editingLead?.websiteRating || null : newLead.websiteRating || null}
+                  onChange={(rating) => showEditModal
+                    ? setEditingLead(prev => prev ? { ...prev, websiteRating: rating } : null)
+                    : setNewLead(prev => ({ ...prev, websiteRating: rating }))
+                  }
+                />
+              </div>
+
+              {/* Industry & Status */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                    Industry
+                  </label>
+                  <select
+                    value={showEditModal ? editingLead?.industry || '' : newLead.industry || ''}
+                    onChange={(e) => showEditModal
+                      ? setEditingLead(prev => prev ? { ...prev, industry: e.target.value as LeadIndustry } : null)
+                      : setNewLead(prev => ({ ...prev, industry: e.target.value as LeadIndustry }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-900 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  >
+                    {LEAD_INDUSTRIES.map(ind => (
+                      <option key={ind.id} value={ind.id}>
+                        {ind.icon} {ind.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                    Status
+                  </label>
+                  <select
+                    value={showEditModal ? editingLead?.status || '' : newLead.status || ''}
+                    onChange={(e) => showEditModal
+                      ? setEditingLead(prev => prev ? { ...prev, status: e.target.value as LeadStatus } : null)
+                      : setNewLead(prev => ({ ...prev, status: e.target.value as LeadStatus }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-900 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  >
+                    {LEAD_STATUSES.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                  Notes
+                </label>
+                <textarea
+                  value={showEditModal ? editingLead?.notes || '' : newLead.notes || ''}
+                  onChange={(e) => showEditModal
+                    ? setEditingLead(prev => prev ? { ...prev, notes: e.target.value } : null)
+                    : setNewLead(prev => ({ ...prev, notes: e.target.value }))
+                  }
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-900 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500 resize-none"
+                  placeholder="Additional notes..."
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 p-4 border-t border-gray-200 dark:border-dark-border">
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  setShowEditModal(false);
+                  setEditingLead(null);
+                }}
+                className="px-4 py-2 border border-gray-200 dark:border-dark-border rounded-lg text-gray-700 dark:text-dark-text hover:bg-gray-50 dark:hover:bg-dark-elevated transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={showEditModal ? handleEditLead : handleAddLead}
+                className="px-4 py-2 bg-gold-500 text-white rounded-lg hover:bg-gold-600 transition-colors"
+              >
+                {showEditModal ? 'Save Changes' : 'Add Lead'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CSV Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-dark-card rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-border">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-dark-text">
+                Import Leads from CSV
+              </h3>
+              <button
+                onClick={() => {
+                  setShowImportModal(false);
+                  setCsvData('');
+                  setCsvPreview([]);
+                }}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-dark-elevated rounded-lg"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-2">
+                  Paste your CSV data
+                </label>
+                <p className="text-xs text-gray-500 dark:text-dark-muted mb-2">
+                  Required column: name or business. Optional: email, phone, company, website, rating
+                </p>
+                <textarea
+                  value={csvData}
+                  onChange={(e) => setCsvData(e.target.value)}
+                  rows={8}
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-900 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500 font-mono text-sm"
+                  placeholder="name,email,phone,website,rating&#10;John's Plumbing,john@plumber.com,123-456-7890,plumber.com,4&#10;..."
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleCSVParse}
+                  className="px-4 py-2 border border-gray-200 dark:border-dark-border rounded-lg text-gray-700 dark:text-dark-text hover:bg-gray-50 dark:hover:bg-dark-elevated transition-colors"
+                >
+                  Preview Import
+                </button>
+                <span className="text-sm text-gray-500 dark:text-dark-muted">
+                  Importing to: <span className="font-medium">{LEAD_INDUSTRIES.find(i => i.id === selectedIndustry)?.name}</span>
+                </span>
+              </div>
+
+              {csvPreview.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 dark:text-dark-text mb-2">
+                    Preview ({csvPreview.length} leads)
+                  </h4>
+                  <div className="border border-gray-200 dark:border-dark-border rounded-lg overflow-hidden max-h-48 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 dark:bg-dark-elevated">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-gray-700 dark:text-dark-text">Name</th>
+                          <th className="px-3 py-2 text-left text-gray-700 dark:text-dark-text">Website</th>
+                          <th className="px-3 py-2 text-left text-gray-700 dark:text-dark-text">Rating</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {csvPreview.slice(0, 10).map((lead, i) => (
+                          <tr key={i} className="border-t border-gray-100 dark:border-dark-border">
+                            <td className="px-3 py-2 text-gray-900 dark:text-dark-text">{lead.name}</td>
+                            <td className="px-3 py-2 text-gray-600 dark:text-dark-muted">{lead.website || '-'}</td>
+                            <td className="px-3 py-2">
+                              {lead.websiteRating ? <StarRating rating={lead.websiteRating} readonly size="sm" /> : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {csvPreview.length > 10 && (
+                      <p className="px-3 py-2 text-xs text-gray-500 bg-gray-50 dark:bg-dark-elevated">
+                        ...and {csvPreview.length - 10} more
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 p-4 border-t border-gray-200 dark:border-dark-border">
+              <button
+                onClick={() => {
+                  setShowImportModal(false);
+                  setCsvData('');
+                  setCsvPreview([]);
+                }}
+                className="px-4 py-2 border border-gray-200 dark:border-dark-border rounded-lg text-gray-700 dark:text-dark-text hover:bg-gray-50 dark:hover:bg-dark-elevated transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCSVImport}
+                disabled={csvPreview.length === 0}
+                className="px-4 py-2 bg-gold-500 text-white rounded-lg hover:bg-gold-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Import {csvPreview.length} Leads
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lead Detail Panel (Slide-out) */}
+      {selectedLead && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/30 z-40 transition-opacity"
+            onClick={() => setSelectedLead(null)}
+          />
+
+          {/* Panel */}
+          <div className="fixed inset-y-0 right-0 w-full max-w-2xl bg-white dark:bg-dark-card shadow-2xl z-50 transform transition-transform duration-300 ease-out flex flex-col">
+            {/* Header */}
+            <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-elevated">
+              <div className="flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-full ${LEAD_STATUSES.find(s => s.id === selectedLead.status)?.color}`} />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-dark-text">Lead Details</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setLeadToDelete(selectedLead);
+                    setShowDeleteConfirm(true);
+                  }}
+                  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                  title="Delete lead"
+                >
+                  <Trash2 size={18} />
+                </button>
+                <button
+                  onClick={() => setSelectedLead(null)}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Name & Company */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 dark:text-dark-muted uppercase tracking-wider mb-2">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedLead.name}
+                    onChange={(e) => handleUpdateSelectedLead({ name: e.target.value })}
+                    className="w-full text-xl font-semibold text-gray-900 dark:text-dark-text bg-transparent border-none focus:outline-none focus:ring-0 p-0 placeholder-gray-400"
+                    placeholder="Lead name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 dark:text-dark-muted uppercase tracking-wider mb-2">
+                    Company
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedLead.company}
+                    onChange={(e) => handleUpdateSelectedLead({ company: e.target.value })}
+                    className="w-full text-base text-gray-700 dark:text-dark-text bg-transparent border-none focus:outline-none focus:ring-0 p-0 placeholder-gray-400"
+                    placeholder="Company name"
+                  />
+                </div>
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-dark-muted uppercase tracking-wider mb-2">
+                  Status
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {LEAD_STATUSES.map(status => (
+                    <button
+                      key={status.id}
+                      onClick={() => handleUpdateSelectedLead({ status: status.id })}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${
+                        selectedLead.status === status.id
+                          ? status.id === 'converted'
+                            ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 ring-2 ring-green-200 dark:ring-green-800'
+                            : status.id === 'lost'
+                            ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 ring-2 ring-red-200 dark:ring-red-800'
+                            : status.id === 'contacted'
+                            ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 ring-2 ring-amber-200 dark:ring-amber-800'
+                            : 'border-blue-400 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 ring-2 ring-blue-200 dark:ring-blue-800'
+                          : 'border-gray-200 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-hover text-gray-600 dark:text-dark-muted'
+                      }`}
+                    >
+                      <div className={`w-2.5 h-2.5 rounded-full ${status.color}`} />
+                      <span className="text-sm font-medium">{status.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Website & Rating */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 dark:text-dark-muted uppercase tracking-wider mb-2">
+                    Website
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <Globe size={16} className="text-gray-400 flex-shrink-0" />
+                    <input
+                      type="text"
+                      value={selectedLead.website}
+                      onChange={(e) => handleUpdateSelectedLead({ website: e.target.value })}
+                      className="flex-1 text-sm text-gray-700 dark:text-dark-text bg-transparent border-none focus:outline-none focus:ring-0 p-0 placeholder-gray-400"
+                      placeholder="website.com"
+                    />
+                  </div>
+                  {selectedLead.website && (
+                    <a
+                      href={selectedLead.website.startsWith('http') ? selectedLead.website : `https://${selectedLead.website}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 mt-1"
+                    >
+                      Open website <ExternalLink size={12} />
+                    </a>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 dark:text-dark-muted uppercase tracking-wider mb-2">
+                    Website Rating
+                  </label>
+                  <StarRating
+                    rating={selectedLead.websiteRating}
+                    onChange={(r) => handleUpdateSelectedLead({ websiteRating: r })}
+                    size="md"
+                  />
+                </div>
+              </div>
+
+              {/* Contact Info */}
+              <div className="space-y-3">
+                <label className="block text-xs font-semibold text-gray-500 dark:text-dark-muted uppercase tracking-wider">
+                  Contact Information
+                </label>
+
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-dark-elevated rounded-lg">
+                    <Phone size={18} className="text-gray-400" />
+                    <input
+                      type="tel"
+                      value={selectedLead.phone}
+                      onChange={(e) => handleUpdateSelectedLead({ phone: e.target.value })}
+                      className="flex-1 text-sm text-gray-700 dark:text-dark-text bg-transparent border-none focus:outline-none focus:ring-0 p-0 placeholder-gray-400"
+                      placeholder="Phone number"
+                    />
+                    {selectedLead.phone && (
+                      <a href={`tel:${selectedLead.phone}`} className="text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300">
+                        <Phone size={16} />
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-dark-elevated rounded-lg">
+                    <Mail size={18} className="text-gray-400" />
+                    <input
+                      type="email"
+                      value={selectedLead.email}
+                      onChange={(e) => handleUpdateSelectedLead({ email: e.target.value })}
+                      className="flex-1 text-sm text-gray-700 dark:text-dark-text bg-transparent border-none focus:outline-none focus:ring-0 p-0 placeholder-gray-400"
+                      placeholder="Email address"
+                    />
+                    {selectedLead.email && (
+                      <a href={`mailto:${selectedLead.email}`} className="text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300">
+                        <Mail size={16} />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Industry */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-dark-muted uppercase tracking-wider mb-2">
+                  Industry
+                </label>
+                <select
+                  value={selectedLead.industry}
+                  onChange={(e) => handleUpdateSelectedLead({ industry: e.target.value as LeadIndustry })}
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-900 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500"
+                >
+                  {LEAD_INDUSTRIES.map(i => (
+                    <option key={i.id} value={i.id}>{i.icon} {i.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-dark-muted uppercase tracking-wider mb-2">
+                  Notes
+                </label>
+                <textarea
+                  value={selectedLead.notes}
+                  onChange={(e) => handleUpdateSelectedLead({ notes: e.target.value })}
+                  rows={5}
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-900 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500 resize-none text-sm"
+                  placeholder="Add notes about this lead..."
+                />
+              </div>
+
+              {/* Source */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-dark-muted uppercase tracking-wider mb-2">
+                  Source
+                </label>
+                <input
+                  type="text"
+                  value={selectedLead.source || ''}
+                  onChange={(e) => handleUpdateSelectedLead({ source: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-900 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500 text-sm"
+                  placeholder="Where did this lead come from?"
+                />
+              </div>
+
+              {/* Timestamps */}
+              <div className="pt-4 border-t border-gray-200 dark:border-dark-border">
+                <div className="flex items-center justify-between text-xs text-gray-500 dark:text-dark-muted">
+                  <span>Created: {new Date(selectedLead.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                  <span>Updated: {new Date(selectedLead.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="flex-shrink-0 px-6 py-5 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-elevated">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    handleStatusChange(selectedLead.id, selectedLead.status === 'converted' ? 'contacted' : 'converted');
+                    showToast('success', selectedLead.status === 'converted' ? 'Lead marked as contacted' : 'Lead converted!');
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors ${
+                    selectedLead.status === 'converted'
+                      ? 'bg-gray-200 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-300'
+                      : 'bg-gray-600 dark:bg-gray-400 text-white dark:text-gray-800 hover:bg-gray-500 dark:hover:bg-gray-500'
+                  }`}
+                >
+                  <CheckCircle size={18} />
+                  {selectedLead.status === 'converted' ? 'Undo Convert' : 'Mark Converted'}
+                </button>
+                <button
+                  onClick={() => setSelectedLead(null)}
+                  className="px-6 py-3 border border-gray-200 dark:border-dark-border rounded-lg text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete Lead"
+        message={`Are you sure you want to delete "${leadToDelete?.name}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={() => {
+          handleDeleteLead();
+          if (selectedLead && leadToDelete?.id === selectedLead.id) {
+            setSelectedLead(null);
+          }
+        }}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setLeadToDelete(null);
+        }}
+        variant="danger"
+      />
+    </div>
+  );
+};
+
+// ============================================
+// WEBSITE CATALOG VIEW
+// ============================================
+
+const CATALOG_STORAGE_KEY = 'tawfeeq_website_catalog';
+
+// Default website catalog items
+const getDefaultCatalogItems = (): WebsiteCatalogItem[] => {
+  const now = new Date().toISOString();
+  return [
+    {
+      id: "catalog-1",
+      websiteName: "VANGUARD STUDIO - Designing Tomorrow's Landmarks",
+      businessType: "Architecture & Design Firm",
+      totalPages: 8,
+      pageList: "Home, Projects, Services, About/Philosophy, Process, Team, Press, Contact",
+      designStyle: "Modern, Bold, Monochromatic with geometric elements",
+      primaryColors: "White, Black, Copper/Bronze (#b87333), Gray",
+      typography: "Bold sans-serif headings, Clean geometric body text",
+      targetAudience: "Commercial developers, High-end residential clients, Cultural institutions",
+      keyFeatures: "Project filtering by type, Timeline process visualization, Team profiles, Awards section",
+      ctas: "Explore Collection, Book Consultation, Request Valuation",
+      functionalityNeeds: "Portfolio gallery, Project case studies",
+      specialNotes: "Focus on architectural photography",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-2",
+      websiteName: "ELEVATE - Premium Tech Learning",
+      businessType: "Online Tech Education Platform",
+      totalPages: 7,
+      pageList: "Home, Courses, Categories, Learning Paths, Instructors, Pricing, About",
+      designStyle: "Modern, Dark tech aesthetic with purple accents",
+      primaryColors: "Dark navy (#0f172a), Purple (#8b5cf6), White, Gray",
+      typography: "Clean sans-serif, Modern tech-forward fonts",
+      targetAudience: "Tech professionals, Career changers, Developers seeking advancement",
+      keyFeatures: "Course catalog with filtering, Learning path visualization, Progress tracking, Interactive coding labs",
+      ctas: "Browse Courses, Start Learning, View Pricing",
+      functionalityNeeds: "Course management, User progress tracking",
+      specialNotes: "Focus on interactive learning experience",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-3",
+      websiteName: "THE VALE - Luxury Boutique Hotel",
+      businessType: "Luxury Boutique Hotel & Vineyard Estate",
+      totalPages: 8,
+      pageList: "Home, Accommodations, Experiences, Restaurant & Wine, Spa, Gallery, Location, Contact",
+      designStyle: "Elegant, Warm wine country aesthetic, Sophisticated luxury",
+      primaryColors: "Warm cream (#f5f0e8), Deep burgundy (#722f37), Gold, Charcoal",
+      typography: "Elegant serif headings, Classic refined body text",
+      targetAudience: "Affluent travelers, Wine enthusiasts, Luxury retreat seekers",
+      keyFeatures: "Experience cards, Gallery grid, Reservation system, Interactive wine menu",
+      ctas: "Book Your Stay, Explore Experiences, View Gallery",
+      functionalityNeeds: "Booking system, Gallery management",
+      specialNotes: "Wine country luxury theme",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-4",
+      websiteName: "BREATHE - Mindfulness & Meditation",
+      businessType: "Mindfulness & Meditation App",
+      totalPages: 7,
+      pageList: "Home, Features, Programs, Teachers, Pricing, Download, About",
+      designStyle: "Calming, Minimal, Soft and serene with rounded corners",
+      primaryColors: "Light cream/beige (#faf8f5), Soft sage green, Warm coral, White",
+      typography: "Elegant serif headings, Clean rounded sans-serif body",
+      targetAudience: "Stressed professionals, Wellness seekers, Meditation beginners",
+      keyFeatures: "Breathing animation circle, App screenshots, Program cards, Teacher profiles",
+      ctas: "Download App, Start Free Trial, Explore Programs",
+      functionalityNeeds: "App showcase, Subscription pricing",
+      specialNotes: "Calming, zen-like interface",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-5",
+      websiteName: "IRONWOOD BREWING CO.",
+      businessType: "Craft Brewery",
+      totalPages: 7,
+      pageList: "Home, Our Beers, Taproom, Story, Events, Shop, Contact",
+      designStyle: "Rustic, Warm craft aesthetic with amber tones",
+      primaryColors: "Deep amber/copper (#b87333), Dark brown (#2d1810), Cream, Gold",
+      typography: "Bold condensed sans-serif headings, Clean body text",
+      targetAudience: "Craft beer enthusiasts, Local community, Beer connoisseurs",
+      keyFeatures: "Beer cards with ABV/tasting notes, Brewing process icons, Taproom gallery",
+      ctas: "Explore Our Beers, Visit Taproom, Book A Tasting, Shop",
+      functionalityNeeds: "Product catalog, Event calendar",
+      specialNotes: "Industrial craft aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-6",
+      websiteName: "TERRA & THREAD",
+      businessType: "Sustainable Fashion Brand",
+      totalPages: 7,
+      pageList: "Home, Shop, Our Story, Sustainability, Journal, Contact, Collections",
+      designStyle: "Elegant, Earthy, Eco-conscious minimalism",
+      primaryColors: "Sage green, Warm beige/cream, Charcoal, Earth tones",
+      typography: "Elegant serif headings, Clean minimal sans-serif body",
+      targetAudience: "Eco-conscious consumers, Luxury sustainable shoppers, Fashion-forward environmentalists",
+      keyFeatures: "Product cards with hover, Material info, Impact statistics, Values columns",
+      ctas: "Shop Collection, Our Mission, Learn More",
+      functionalityNeeds: "E-commerce, Sustainability tracking",
+      specialNotes: "Focus on transparency and eco-credentials",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-7",
+      websiteName: "HAUS COLLECTIVE",
+      businessType: "Interior Design Studio",
+      totalPages: 6,
+      pageList: "Home, Projects, Services, About, Press, Contact",
+      designStyle: "Elegant, Modern luxury with warm sophisticated tones",
+      primaryColors: "Warm taupe/beige, White, Black, Natural wood tones",
+      typography: "Elegant serif logo, Clean modern sans-serif body",
+      targetAudience: "Affluent homeowners, Design-conscious clients, High-end property developers",
+      keyFeatures: "Project gallery grid with modal, Services breakdown, Press mentions, Testimonials",
+      ctas: "Explore, View Project, Get In Touch, Learn More",
+      functionalityNeeds: "Portfolio gallery, Contact form",
+      specialNotes: "Sophisticated minimalist aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-8",
+      websiteName: "FLOUR & SOUL Artisan Bakery",
+      businessType: "Artisan Bakery",
+      totalPages: 6,
+      pageList: "Home, Menu, Our Story, Baking Process, Order, Contact",
+      designStyle: "Warm, Rustic artisan with cozy bakery aesthetic",
+      primaryColors: "Warm brown/sepia, Cream/off-white, Dark charcoal, Golden wheat",
+      typography: "Elegant script headings, Clean readable body text",
+      targetAudience: "Local food lovers, Artisan bread enthusiasts, Breakfast seekers",
+      keyFeatures: "Signature offerings cards, Category-based menu, Process visualization, Testimonials",
+      ctas: "Order For Pickup, View Our Menu, Explore",
+      functionalityNeeds: "Online ordering, Menu display",
+      specialNotes: "Artisan warmth and authenticity",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-9",
+      websiteName: "Serenity Springs",
+      businessType: "Wellness Spa & Retreat",
+      totalPages: 7,
+      pageList: "Home, Experiences, Wellness, Retreat Packages, Sanctuary Gallery, About, Book",
+      designStyle: "Calming, Serene nature-inspired with organic flow",
+      primaryColors: "Soft sage green, Warm sand/beige, White, Earthy terracotta",
+      typography: "Elegant serif headings, Soft flowing body text",
+      targetAudience: "Wellness seekers, Stressed professionals, Spiritual retreat seekers",
+      keyFeatures: "Experience cards with descriptions, Retreat package pricing, Photo gallery, Date picker booking",
+      ctas: "Book Now, Check Availability, Explore Retreats",
+      functionalityNeeds: "Booking system, Package management",
+      specialNotes: "Nature-inspired tranquility",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-10",
+      websiteName: "AURUM & STONE - Luxury Fine Jewelry",
+      businessType: "Luxury Fine Jewelry Maison",
+      totalPages: 7,
+      pageList: "Home, Collections, Craftsmanship, Signature Pieces, Atelier Locations, About, Contact",
+      designStyle: "Ultra-refined, Prestigious luxury with timeless elegance",
+      primaryColors: "Gold/champagne, Deep black, White, Warm cream",
+      typography: "Elegant serif typography, Refined spaced lettering",
+      targetAudience: "Ultra-high-net-worth individuals, Luxury collectors, Engagement/special occasion buyers",
+      keyFeatures: "Collection galleries, Signature piece showcase, Atelier location cards",
+      ctas: "Explore Collections, Book Appointment, Discover",
+      functionalityNeeds: "Product showcase, Appointment booking",
+      specialNotes: "Haute joaillerie prestige",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-11",
+      websiteName: "LENS & LIGHT - Fine Art Photography",
+      businessType: "Fine Art Photography Studio",
+      totalPages: 6,
+      pageList: "Home, Work/Portfolio, About, Process, Clients, Contact",
+      designStyle: "Sophisticated, Minimal gallery aesthetic, Photography-focused",
+      primaryColors: "Black, White, Subtle gray tones",
+      typography: "Elegant spaced sans-serif, Refined minimal typography",
+      targetAudience: "Art collectors, Fashion/editorial clients, High-end brands, Publications",
+      keyFeatures: "Masonry gallery with hover reveals, Collection categories, Client logo parade, Process steps",
+      ctas: "Let's Create Together, View Work, Contact",
+      functionalityNeeds: "Portfolio gallery, Image lightbox",
+      specialNotes: "Gallery-first minimal design",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-12",
+      websiteName: "Ember & Oak Coffee Roasters",
+      businessType: "Specialty Coffee Roasters",
+      totalPages: 7,
+      pageList: "Home, Our Story, Coffee Shop, Subscriptions, Brewing Guide, Find Us, Cart",
+      designStyle: "Handcrafted, Warm cozy coffee shop aesthetic",
+      primaryColors: "Warm brown/copper, Cream, Deep charcoal, Orange accent",
+      typography: "Elegant serif headings, Warm readable body text",
+      targetAudience: "Coffee enthusiasts, Specialty coffee lovers, Home brewers, Subscription seekers",
+      keyFeatures: "Product catalog, Subscription options, Brewing guides, Store locator",
+      ctas: "Shop Coffee, Our Story, Subscribe",
+      functionalityNeeds: "E-commerce, Subscription management",
+      specialNotes: "Artisan coffee warmth",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-13",
+      websiteName: "Architecture & Design Studio",
+      businessType: "Architecture & Design Studio",
+      totalPages: 8,
+      pageList: "Home, Projects, Philosophy, Services, Awards, Testimonial, Contact CTA, Footer",
+      designStyle: "Modern, Minimalist, Gallery-style with bold typography",
+      primaryColors: "Black (#000000), White (#FFFFFF), Gray tones",
+      typography: "Bold sans-serif headlines (VANGUARD), Clean sans-serif body",
+      targetAudience: "Corporate clients, Developers, High-net-worth individuals, Commercial real estate",
+      keyFeatures: "Project portfolio grid, Service categories with icons, Stats counter, Award badges, Client testimonials",
+      ctas: "See All Projects, Get In Touch, Learn More",
+      functionalityNeeds: "Portfolio CMS, Contact form",
+      specialNotes: "Monochromatic professional aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-14",
+      websiteName: "Maison Voyage - Curated Luxury Escapes",
+      businessType: "Luxury Travel Agency",
+      totalPages: 8,
+      pageList: "Home, Destinations, Experiences, The Collection, Journal, Book Your Escape, Newsletter, Footer",
+      designStyle: "Elegant, Luxury, Warm tones with serif typography",
+      primaryColors: "Navy blue (#1a2744), Gold/Tan (#c9a962), Cream/White",
+      typography: "Elegant serif headers (Maison Voyage), Clean sans-serif body",
+      targetAudience: "Affluent travelers, Luxury seekers, High-net-worth couples, Discerning explorers",
+      keyFeatures: "Destination cards with pricing, Experience categories, Journal/blog section",
+      ctas: "Explore, Book Your Escape, Read More",
+      functionalityNeeds: "Booking inquiry, Destination catalog",
+      specialNotes: "Aspirational luxury travel",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-15",
+      websiteName: "Stillness - Premium Mindfulness",
+      businessType: "Mindfulness & Meditation App",
+      totalPages: 8,
+      pageList: "Home, Practice, Science, Pricing, Features, Testimonial, Final CTA, Footer",
+      designStyle: "Calming, Minimal, Clean with soft sage green accents",
+      primaryColors: "Sage green (#8fa98f), Off-white/Cream, Dark gray text",
+      typography: "Elegant serif headlines (Stillness), Clean sans-serif body",
+      targetAudience: "Wellness seekers, Busy professionals, Anxiety sufferers, Sleep improvement seekers",
+      keyFeatures: "Daily Meditations, Sleep Stories, Breathing Exercises, Pricing tiers, App store links",
+      ctas: "Start Free Trial, Download App, Try Now",
+      functionalityNeeds: "App download links, Subscription pricing",
+      specialNotes: "Serene, calming interface",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-16",
+      websiteName: "Haven Home - Premium Minimalist Home Goods",
+      businessType: "Premium Home Goods E-commerce",
+      totalPages: 8,
+      pageList: "Home, Shop, Collections, About, Journal, Cart, Product Pages, Footer",
+      designStyle: "Minimalist, Clean, Warm, Premium with earthy green accents",
+      primaryColors: "Forest green (#4a5d4a), Off-white/Cream (#f5f5f0), Warm gray, Charcoal text",
+      typography: "Elegant serif headlines (Haven Home), Clean sans-serif body text",
+      targetAudience: "Homeowners, Interior design enthusiasts, Sustainability-conscious shoppers, Minimalist lifestyle seekers",
+      keyFeatures: "Product grid, Collection categories, Journal/blog, Cart functionality",
+      ctas: "Shop Now, Add to Cart, Explore Collection",
+      functionalityNeeds: "E-commerce, Cart, Product catalog",
+      specialNotes: "Scandinavian-inspired minimalism",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-17",
+      websiteName: "Studio Eleven Portfolio",
+      businessType: "Creative Agency / Design Studio",
+      totalPages: 8,
+      pageList: "Home, Work, Services, About, Contact, Case Studies, Testimonials, Footer",
+      designStyle: "Modern, Bold, Professional with vibrant orange accents on dark navy",
+      primaryColors: "Vibrant orange (#f97316), Dark navy (#1e3a5a), White, Light cream/beige backgrounds",
+      typography: "Bold serif headlines (Studio Eleven), Clean sans-serif body text",
+      targetAudience: "Startups, Ambitious brands, Tech companies, Businesses seeking digital transformation",
+      keyFeatures: "Portfolio grid with case studies, Service cards, Client testimonials, Contact form",
+      ctas: "View Work, Get In Touch, Start Project",
+      functionalityNeeds: "Portfolio CMS, Contact form",
+      specialNotes: "Bold creative agency vibe",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-18",
+      websiteName: "Northpoint Strategy Consulting",
+      businessType: "Management Consulting Firm",
+      totalPages: 7,
+      pageList: "Home, Services, About, Insights, Contact, Case Studies, Footer",
+      designStyle: "Corporate, Professional, Elegant with navy blue and subtle earth tones",
+      primaryColors: "Dark navy (#1a365d), White, Soft pink/blush accents, Light gray backgrounds",
+      typography: "Elegant serif headlines (italic), Clean professional sans-serif body",
+      targetAudience: "Fortune 500 companies, Enterprise executives, C-suite leaders, Global organizations",
+      keyFeatures: "Services showcase (3 core services), Stats counter, Insights/blog section, Case studies",
+      ctas: "Learn More, Contact Us, Read Insights",
+      functionalityNeeds: "Blog/Insights CMS, Contact form",
+      specialNotes: "Trust and authority focus",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-19",
+      websiteName: "Taskflow - Project Management",
+      businessType: "SaaS / Project Management Platform",
+      totalPages: 8,
+      pageList: "Home, Product, Pricing, Resources, Features, Integrations, Enterprise, About",
+      designStyle: "Modern, Clean, SaaS-focused with professional appeal",
+      primaryColors: "Emerald green (#10b981), White, Light gray, Dark navy for text",
+      typography: "Sans-serif (likely Inter or similar), Clean and readable",
+      targetAudience: "Remote teams, Project managers, Startups, Product teams",
+      keyFeatures: "Kanban board, AI-powered task prioritization, Real-time collaboration, Smart automation",
+      ctas: "Get Started Free, See Pricing, Book Demo",
+      functionalityNeeds: "SaaS landing page, Pricing table",
+      specialNotes: "Clean SaaS aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-20",
+      websiteName: "Clarity - AI Writing Assistant",
+      businessType: "SaaS / AI Writing Tool",
+      totalPages: 6,
+      pageList: "Home, Features, Pricing, About, Chrome Extension, Desktop App",
+      designStyle: "Modern, Clean, SaaS-focused with minimal aesthetic",
+      primaryColors: "Blue (#3b82f6), White, Light gray, Dark text",
+      typography: "Sans-serif, Clean and modern typography",
+      targetAudience: "Content creators, Writers, Marketers, Business professionals",
+      keyFeatures: "AI writing suggestions, Tone analysis, Grammar check, GPT-4 integration, Plagiarism check, Style guides",
+      ctas: "Start writing for free, Get Started, Get started",
+      functionalityNeeds: "SaaS landing page, Feature showcase",
+      specialNotes: "AI-focused clean design",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-21",
+      websiteName: "MUSICBOX - Music Streaming Platform",
+      businessType: "Music Streaming Platform",
+      totalPages: 8,
+      pageList: "Home, Discover, Browse Genres, Artists, Charts, Radio, My Playlist, Premium",
+      designStyle: "Modern, Dark tech aesthetic with vibrant purple/magenta accents",
+      primaryColors: "Deep black (#0d0d0d), Electric purple (#9945ff), Magenta/Pink (#ff2d95), Dark gray",
+      typography: "Bold sans-serif headings, Clean modern body text, Sporty geometric fonts",
+      targetAudience: "Music lovers, Young adults, Premium music subscribers, Podcast listeners",
+      keyFeatures: "Music player interface, Artist cards, Playlist creation, Genre browsing, Live radio, Charts display",
+      ctas: "Start Listening Free, Go Premium, Browse Music, Create Playlist",
+      functionalityNeeds: "Audio streaming interface, User playlists, Search functionality",
+      specialNotes: "Spotify/Apple Music competitor aesthetic, Focus on discovery",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-22",
+      websiteName: "Wahaj Khan Portfolio",
+      businessType: "Freelance Web Designer Portfolio",
+      totalPages: 6,
+      pageList: "Home, About, Projects, Services, Testimonials, Contact",
+      designStyle: "Modern, Clean minimalist with bold orange accent",
+      primaryColors: "Deep navy/dark blue (#0f172a), Vibrant orange (#f97316), White, Light gray",
+      typography: "Bold sans-serif headings, Clean readable body text",
+      targetAudience: "Startup founders, Small business owners, Agencies seeking freelance designers",
+      keyFeatures: "Project showcase grid, Service packages, Client testimonials, Contact form, Case studies",
+      ctas: "View My Work, Let's Work Together, Get In Touch, Book a Call",
+      functionalityNeeds: "Portfolio gallery, Contact form, Service packages",
+      specialNotes: "Personal brand focus, Strong typography hierarchy",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-23",
+      websiteName: "Vantage Design - Creative Design Agency",
+      businessType: "SaaS Design Agency",
+      totalPages: 7,
+      pageList: "Home, Services, Work, About, Process, Pricing, Contact",
+      designStyle: "Bold, Modern with vibrant coral/salmon accent on dark navy",
+      primaryColors: "Dark navy (#1e293b), Coral/Salmon (#f87171), White, Light cream backgrounds",
+      typography: "Bold geometric sans-serif headings, Clean professional body text",
+      targetAudience: "SaaS companies, Tech startups, Product teams, Growth-stage companies",
+      keyFeatures: "Case study showcase, Service breakdown, Process timeline, Pricing tiers, Client logos",
+      ctas: "View Our Work, Start a Project, See Pricing, Book Discovery Call",
+      functionalityNeeds: "Portfolio CMS, Case studies, Inquiry form",
+      specialNotes: "SaaS/Tech focus, Results-driven messaging",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-24",
+      websiteName: "Verdant Roots Boutique Nursery",
+      businessType: "Plant Nursery / E-commerce",
+      totalPages: 7,
+      pageList: "Home, Shop Plants, Plant Care Guides, About, Workshops, Blog, Contact",
+      designStyle: "Fresh, Natural, Botanical with soft green and earthy tones",
+      primaryColors: "Forest green (#228b22), Soft sage (#90a955), Cream/off-white, Terracotta accent",
+      typography: "Elegant serif headings, Clean readable body text, Botanical feel",
+      targetAudience: "Plant enthusiasts, Home gardeners, Urban apartment dwellers, Gift buyers",
+      keyFeatures: "Plant catalog with care levels, Care guides, Workshop booking, Blog/journal, Plant finder quiz",
+      ctas: "Shop Plants, Find Your Plant, Book Workshop, Read Guide",
+      functionalityNeeds: "E-commerce, Plant database, Workshop booking",
+      specialNotes: "Educational focus, Lifestyle brand appeal",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-25",
+      websiteName: "Groove Haven - Vintage Vinyl Record Store",
+      businessType: "Vintage Vinyl Record Store",
+      totalPages: 6,
+      pageList: "Home, Browse Records, New Arrivals, Sell Your Vinyl, About, Events",
+      designStyle: "Retro, Warm vintage aesthetic with nostalgic vibes",
+      primaryColors: "Warm orange/amber (#e07b39), Cream/beige, Dark brown, Mustard yellow",
+      typography: "Retro serif/display headings, Clean vintage-inspired body",
+      targetAudience: "Vinyl collectors, Music enthusiasts, Retro culture fans, Gift buyers",
+      keyFeatures: "Record catalog by genre, Grading system display, Trade-in form, Event calendar, Wishlist",
+      ctas: "Browse Collection, Sell Your Vinyl, Join Our Events, View New Arrivals",
+      functionalityNeeds: "Product catalog, Trade-in submission, Event calendar",
+      specialNotes: "Nostalgic warmth, Community-focused",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-26",
+      websiteName: "Scoops & Dreams - Artisan Ice Cream",
+      businessType: "Artisan Ice Cream Shop",
+      totalPages: 6,
+      pageList: "Home, Our Flavors, Catering, Locations, Our Story, Order Online",
+      designStyle: "Playful, Sweet, Whimsical with pastel palette",
+      primaryColors: "Soft pink (#f8b4c4), Mint green (#98d8c8), Cream, Chocolate brown accent",
+      typography: "Playful rounded headings, Friendly clean body text",
+      targetAudience: "Families, Ice cream lovers, Event planners, Instagram foodies",
+      keyFeatures: "Flavor grid with descriptions, Seasonal specials, Catering packages, Store locator, Online ordering",
+      ctas: "View Flavors, Order Now, Book Catering, Find a Location",
+      functionalityNeeds: "Menu display, Online ordering, Catering inquiry",
+      specialNotes: "Fun, Instagram-worthy aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-27",
+      websiteName: "Shadow Ink Tattoo Studio",
+      businessType: "Tattoo Studio",
+      totalPages: 6,
+      pageList: "Home, Artists, Gallery, Styles, Booking, Aftercare",
+      designStyle: "Dark, Edgy, Bold with high contrast",
+      primaryColors: "Pure black (#000000), White, Crimson red (#dc2626), Dark gray",
+      typography: "Bold gothic/display headings, Clean modern body text",
+      targetAudience: "Tattoo enthusiasts, First-timers, Custom tattoo seekers, Alternative culture",
+      keyFeatures: "Artist profiles, Portfolio gallery by style, Online booking, Aftercare guides, Style showcase",
+      ctas: "Book Now, View Gallery, Meet Our Artists, Learn About Styles",
+      functionalityNeeds: "Artist portfolios, Booking system, Gallery",
+      specialNotes: "Dark aesthetic, Artist-focused",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-28",
+      websiteName: "Elevate Dance Academy",
+      businessType: "Dance Academy",
+      totalPages: 7,
+      pageList: "Home, Classes, Schedule, Instructors, Performances, Registration, Contact",
+      designStyle: "Elegant, Dynamic, Energetic with graceful touches",
+      primaryColors: "Deep purple (#6b21a8), Soft pink/rose, White, Gold accent",
+      typography: "Elegant flowing serif headings, Clean professional body",
+      targetAudience: "Dance students (all ages), Parents, Adult learners, Performance enthusiasts",
+      keyFeatures: "Class schedule grid, Instructor profiles, Registration forms, Performance gallery, Level filtering",
+      ctas: "Enroll Now, View Schedule, Meet Instructors, Watch Performances",
+      functionalityNeeds: "Class scheduling, Registration, Calendar",
+      specialNotes: "Movement and grace in design, All skill levels",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-29",
+      websiteName: "Copper Ridge Brewing Co.",
+      businessType: "Craft Brewery",
+      totalPages: 7,
+      pageList: "Home, Our Beers, Taproom, Tours & Tastings, Events, Shop, Contact",
+      designStyle: "Industrial, Rustic craft with copper and earth tones",
+      primaryColors: "Copper/bronze (#b87333), Deep charcoal (#1c1917), Cream, Forest green accent",
+      typography: "Bold industrial sans-serif headings, Clean body text",
+      targetAudience: "Craft beer enthusiasts, Local community, Tourists, Event planners",
+      keyFeatures: "Beer catalog with ABV/IBU, Taproom menu, Tour booking, Event calendar, Merchandise shop",
+      ctas: "Explore Our Beers, Book a Tour, Visit Taproom, Shop Merch",
+      functionalityNeeds: "Beer catalog, Tour booking, Event calendar, E-commerce",
+      specialNotes: "Authentic craft brewery vibe, Local focus",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-30",
+      websiteName: "Harmony Music Conservatory",
+      businessType: "Music Academy",
+      totalPages: 8,
+      pageList: "Home, Programs, Private Lessons, Faculty, Facilities, Recitals, Admissions, Contact",
+      designStyle: "Classical, Prestigious, Elegant with musical sophistication",
+      primaryColors: "Deep burgundy (#722f37), Gold (#c9a962), Cream/ivory, Dark charcoal",
+      typography: "Classic elegant serif headings, Refined body text",
+      targetAudience: "Music students, Parents of young musicians, Adult learners, Serious musicians",
+      keyFeatures: "Program cards by instrument, Faculty profiles, Facility gallery, Recital calendar, Online registration",
+      ctas: "Apply Now, Explore Programs, Meet Faculty, Schedule Trial Lesson",
+      functionalityNeeds: "Program catalog, Faculty directory, Admissions form",
+      specialNotes: "Prestige and excellence focus, Classical music emphasis",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-31",
+      websiteName: "Chapter & Verse Bookstore",
+      businessType: "Independent Bookstore",
+      totalPages: 7,
+      pageList: "Home, Shop Books, Events, Book Club, About, Blog, Contact",
+      designStyle: "Warm, Literary, Cozy bookshop aesthetic",
+      primaryColors: "Deep teal (#0d9488), Warm cream/paper, Dark brown, Burnt orange accent",
+      typography: "Literary serif headings, Classic readable body text",
+      targetAudience: "Book lovers, Local community, Book club members, Gift buyers",
+      keyFeatures: "Book catalog by genre, Staff picks, Event calendar, Book club signup, Author events, Blog",
+      ctas: "Shop Books, Join Book Club, View Events, Staff Picks",
+      functionalityNeeds: "E-commerce, Event calendar, Newsletter signup",
+      specialNotes: "Community-focused, Curated recommendations",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-32",
+      websiteName: "Stellar Fitness",
+      businessType: "Premium Gym / Fitness Center",
+      totalPages: 7,
+      pageList: "Home, Classes, Memberships, Trainers, Facilities, Schedule, Join Now",
+      designStyle: "Bold, Energetic, Modern fitness aesthetic",
+      primaryColors: "Electric blue (#3b82f6), Dark charcoal (#18181b), White, Lime green accent",
+      typography: "Bold athletic sans-serif headings, Clean strong body text",
+      targetAudience: "Fitness enthusiasts, Professionals, Athletes, Health-conscious adults",
+      keyFeatures: "Class schedule, Membership tiers, Trainer profiles, Facility tour, Online signup",
+      ctas: "Join Now, View Classes, Meet Trainers, Start Free Trial",
+      functionalityNeeds: "Class scheduling, Membership signup, Trainer booking",
+      specialNotes: "High-energy, Results-focused",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-33",
+      websiteName: "Luna & Sol Jewelry",
+      businessType: "Handcrafted Jewelry Brand",
+      totalPages: 7,
+      pageList: "Home, Shop, Collections, Custom Orders, Our Story, Care Guide, Contact",
+      designStyle: "Ethereal, Celestial, Delicate feminine aesthetic",
+      primaryColors: "Soft gold (#d4af37), Deep midnight blue (#1e3a5f), Blush pink, White",
+      typography: "Delicate elegant serif headings, Light refined body text",
+      targetAudience: "Women 25-45, Gift buyers, Handmade jewelry lovers, Celestial aesthetic fans",
+      keyFeatures: "Product grid, Collection pages, Custom order form, Jewelry care tips, Wishlist",
+      ctas: "Shop Collection, Custom Order, Explore, Add to Wishlist",
+      functionalityNeeds: "E-commerce, Custom order form, Wishlist",
+      specialNotes: "Celestial/moon theme, Handcrafted story",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-34",
+      websiteName: "Peak Performance Coaching",
+      businessType: "Executive Coaching / Life Coach",
+      totalPages: 6,
+      pageList: "Home, Services, About, Resources, Testimonials, Book a Session",
+      designStyle: "Professional, Empowering, Clean with confident accents",
+      primaryColors: "Deep navy (#1e3a5f), Gold/amber (#f59e0b), White, Light gray",
+      typography: "Strong confident sans-serif headings, Professional body text",
+      targetAudience: "Executives, Entrepreneurs, Professionals seeking growth, Leaders",
+      keyFeatures: "Service packages, Booking calendar, Resource library, Client testimonials, Video intro",
+      ctas: "Book Free Consultation, View Services, Download Resources, Get Started",
+      functionalityNeeds: "Booking calendar, Resource downloads, Contact form",
+      specialNotes: "Results and transformation focus",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-35",
+      websiteName: "Artisan Table Restaurant",
+      businessType: "Farm-to-Table Restaurant",
+      totalPages: 7,
+      pageList: "Home, Menu, Our Farm, Chef's Story, Reservations, Private Events, Contact",
+      designStyle: "Organic, Warm, Rustic elegance with natural textures",
+      primaryColors: "Sage green (#6b8e23), Warm cream, Terracotta (#e07b39), Dark wood brown",
+      typography: "Elegant serif headings, Clean organic body text",
+      targetAudience: "Foodies, Local food supporters, Fine dining seekers, Special occasion diners",
+      keyFeatures: "Seasonal menu display, Farm sourcing story, Chef profile, Reservation system, Private dining packages",
+      ctas: "Reserve a Table, View Menu, Meet the Chef, Book Private Event",
+      functionalityNeeds: "Reservation system, Menu CMS, Private event inquiry",
+      specialNotes: "Farm-to-table story, Local sourcing emphasis",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-36",
+      websiteName: "Nimbus Cloud Solutions",
+      businessType: "Cloud Infrastructure B2B SaaS",
+      totalPages: 8,
+      pageList: "Home, Products, Solutions, Pricing, Docs, Company, Partners, Contact",
+      designStyle: "Modern, Technical, Professional B2B SaaS aesthetic",
+      primaryColors: "Sky blue (#0ea5e9), Dark navy (#0f172a), White, Light gray",
+      typography: "Clean modern sans-serif headings, Technical readable body",
+      targetAudience: "CTOs, DevOps teams, Enterprise IT, Startups scaling infrastructure",
+      keyFeatures: "Product feature comparison, Pricing calculator, Documentation, Integration logos, Case studies",
+      ctas: "Start Free Trial, View Pricing, Read Docs, Contact Sales",
+      functionalityNeeds: "Documentation portal, Pricing calculator, Demo request",
+      specialNotes: "Technical credibility, Enterprise trust signals",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-37",
+      websiteName: "Wild Roots Outdoor Co.",
+      businessType: "Outdoor Gear E-commerce",
+      totalPages: 8,
+      pageList: "Home, Shop, Gear Guides, Adventures, About, Sustainability, Blog, Contact",
+      designStyle: "Rugged, Adventurous, Natural outdoor aesthetic",
+      primaryColors: "Forest green (#166534), Earth brown (#78350f), Cream, Orange accent",
+      typography: "Bold rugged sans-serif headings, Adventure-ready body text",
+      targetAudience: "Outdoor enthusiasts, Hikers, Campers, Adventure travelers, Eco-conscious shoppers",
+      keyFeatures: "Product catalog, Gear guides, Adventure stories/blog, Sustainability page, Wishlist",
+      ctas: "Shop Gear, Read Guides, Plan Adventure, Explore",
+      functionalityNeeds: "E-commerce, Blog, Gear guides content",
+      specialNotes: "Adventure lifestyle brand, Sustainability focus",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-38",
+      websiteName: "Zenith Dental Care",
+      businessType: "Modern Dental Practice",
+      totalPages: 7,
+      pageList: "Home, Services, Technology, Team, Patient Resources, Appointments, Contact",
+      designStyle: "Clean, Modern, Healthcare professional with calming elements",
+      primaryColors: "Teal (#14b8a6), White, Light gray, Navy accent",
+      typography: "Clean modern sans-serif headings, Friendly professional body",
+      targetAudience: "Families, Professionals, Dental anxiety sufferers, Cosmetic dentistry seekers",
+      keyFeatures: "Service cards, Team profiles, Technology showcase, Online booking, Patient forms, Virtual tour",
+      ctas: "Book Appointment, View Services, Meet Our Team, Patient Portal",
+      functionalityNeeds: "Online booking, Patient forms, Service catalog",
+      specialNotes: "Calming, Patient comfort focus, Modern tech emphasis",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-39",
+      websiteName: "Meridian Financial Advisors",
+      businessType: "Financial Advisory Firm",
+      totalPages: 7,
+      pageList: "Home, Services, Team, Insights, Resources, Client Portal, Contact",
+      designStyle: "Professional, Trustworthy, Classic financial aesthetic",
+      primaryColors: "Deep navy (#1e3a8a), Gold (#b8860b), White, Light gray",
+      typography: "Classic professional serif headings, Clean authoritative body",
+      targetAudience: "High-net-worth individuals, Business owners, Retirees, Professionals",
+      keyFeatures: "Service breakdown, Team credentials, Market insights blog, Resource library, Client portal link",
+      ctas: "Schedule Consultation, View Services, Read Insights, Client Login",
+      functionalityNeeds: "Blog/insights, Contact form, Resource downloads",
+      specialNotes: "Trust and expertise focus, Regulatory compliance",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-40",
+      websiteName: "Bloom & Flourish Florist",
+      businessType: "Premium Florist / E-commerce",
+      totalPages: 7,
+      pageList: "Home, Shop, Occasions, Subscriptions, Weddings, About, Contact",
+      designStyle: "Fresh, Elegant, Romantic floral aesthetic",
+      primaryColors: "Soft blush pink (#fce7f3), Deep green (#166534), White, Gold accent",
+      typography: "Elegant flowing script/serif headings, Delicate body text",
+      targetAudience: "Gift buyers, Wedding couples, Subscription seekers, Event planners",
+      keyFeatures: "Arrangement catalog, Occasion filtering, Subscription plans, Wedding packages, Same-day delivery",
+      ctas: "Shop Arrangements, Subscribe, Wedding Inquiry, Order Now",
+      functionalityNeeds: "E-commerce, Subscription system, Wedding inquiry form",
+      specialNotes: "Romantic and fresh, Premium gifting focus",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-41",
+      websiteName: "Serenity Spa",
+      businessType: "Luxury Day Spa / Wellness Retreat",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Services, Experience, Testimonials, Booking CTA, Footer)",
+      designStyle: "Calm, Luxurious, Organic with soft shadows",
+      primaryColors: "Cream (#FAF8F5), Sage Green (#2D4739), Dusty Rose (#D4A5A5), Olive (#8B9A7D)",
+      typography: "Elegant thin serif (Cormorant)",
+      targetAudience: "Wellness seekers, Sedona visitors",
+      keyFeatures: "4 treatments ($65-$120), Experience philosophy, Booking form",
+      ctas: "BOOK YOUR ESCAPE, DISCOVER SERVICES",
+      functionalityNeeds: "Booking form integration",
+      specialNotes: "Organic, nature-inspired aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-42",
+      websiteName: "IRON FORGE",
+      businessType: "Premium Fitness Gym",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Programs, Stats, Membership, Footer)",
+      designStyle: "Bold, Energetic, Motivational with strong contrast",
+      primaryColors: "Black (#0A0A0A), White (#FFFFFF), Lime Green (#BFFF00), Dark Gray",
+      typography: "Bold condensed sans-serif (Bebas Neue) uppercase",
+      targetAudience: "Fitness enthusiasts, Austin professionals",
+      keyFeatures: "4 programs (Strength, HIIT, Personal, Yoga), 4 stats (10+ yrs, 50+ trainers, 500+ members, 24/7), 3 membership tiers",
+      ctas: "START YOUR TRANSFORMATION, JOIN NOW",
+      functionalityNeeds: "Membership signup form",
+      specialNotes: "High-energy, motivational design",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-43",
+      websiteName: "NORD",
+      businessType: "Upscale Nordic Restaurant",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Signature Dishes, Our Story, Reservation CTA, Footer)",
+      designStyle: "Luxurious, Intimate, Nordic-inspired with subtle animations",
+      primaryColors: "Deep Forest Green (#1A2F23), Warm Cream (#F5F1E8), Copper/Gold (#C4956A)",
+      typography: "Elegant serif (Cormorant Garamond)",
+      targetAudience: "Fine dining enthusiasts, Portland foodies",
+      keyFeatures: "3 signature dishes with prices, Chef's story, Locally-sourced ingredients, Reservation form (date/time/party)",
+      ctas: "RESERVE YOUR TABLE, VIEW MENU",
+      functionalityNeeds: "Reservation form integration",
+      specialNotes: "Nordic minimalist with warm touches",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-44",
+      websiteName: "The Golden Crust",
+      businessType: "Artisan Bakery & Coffee Shop",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Menu Highlights, About, Location/Hours, Footer)",
+      designStyle: "Warm, Inviting, Artisanal aesthetic",
+      primaryColors: "Cream/Beige (#FAF7F2), Espresso Brown (#3D2314), Terracotta (#C4704A)",
+      typography: "Elegant serif (Playfair Display)",
+      targetAudience: "Coffee & pastry lovers, Downtown visitors",
+      keyFeatures: "3 menu highlights (Croissants, Sourdough, Coffee), Baked Fresh Daily story, Stats (10+ yrs, 50+ recipes, 100% organic), Location/hours",
+      ctas: "ORDER NOW, VISIT US",
+      functionalityNeeds: "Online ordering integration",
+      specialNotes: "Warm, artisanal bakery vibe",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-45",
+      websiteName: "MINDFLOW",
+      businessType: "AI-Powered Notes App / SaaS",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Features, AI Section, Footer)",
+      designStyle: "Dark, Modern, Cosmic/nebula with glowing effects and star particles",
+      primaryColors: "Black (#0A0A0A), Purple/Violet (#8B5CF6), White, Gray (#9CA3AF)",
+      typography: "Clean modern sans-serif",
+      targetAudience: "Productivity enthusiasts, Note-takers, Knowledge workers",
+      keyFeatures: "8 features (Lightning Fast, Networked Notes, AI Assistant, Encryption, Calendar, Publishing, Capture, Search), 5 AI features",
+      ctas: "GET STARTED FREE, TRY AI ASSISTANT",
+      functionalityNeeds: "SaaS signup, AI demo",
+      specialNotes: "Cosmic purple theme with glowing effects",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-46",
+      websiteName: "FINOVA AI",
+      businessType: "AI-Powered Banking / FinTech SaaS",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Features, Stats, Footer)",
+      designStyle: "Dark, Modern, Fintech with glassmorphism and glowing blue accents",
+      primaryColors: "Dark Navy (#0A0F1A), Electric Blue (#3B82F6), White, Gray (#9CA3AF)",
+      typography: "Clean modern sans-serif",
+      targetAudience: "Finance professionals, Business owners, Banking customers",
+      keyFeatures: "Powered by AI badge, Start Free Trial, Watch Demo, 50K+ experts social proof, Asset Flow stats card, 3 features",
+      ctas: "START FREE TRIAL, WATCH DEMO",
+      functionalityNeeds: "SaaS signup, Demo video",
+      specialNotes: "Fintech glassmorphism aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-47",
+      websiteName: "NEXUS AI",
+      businessType: "AI Automation / SaaS Startup",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Trusted By, Services, Process, Benefits, Testimonials, Pricing, FAQ, Footer)",
+      designStyle: "Dark, Futuristic with purple accents, star particles, glowing 3D orb",
+      primaryColors: "Black (#0A0A0F), Vibrant Purple (#8B5CF6), White, Gray (#9CA3AF), Dark Gray (#1A1A1F)",
+      typography: "Clean bold sans-serif (Inter)",
+      targetAudience: "Businesses, Enterprise, Tech companies",
+      keyFeatures: "NEW and Powered by GPT-5 badges, 500+ companies",
+      ctas: "GET STARTED, BOOK A DEMO",
+      functionalityNeeds: "SaaS signup, Demo booking",
+      specialNotes: "Futuristic AI aesthetic with 3D elements",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-48",
+      websiteName: "VOID",
+      businessType: "Creative Design Agency",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Portfolio, Services, Stats, Testimonial, CTA, Footer)",
+      designStyle: "Ultra-minimal, Bold, High contrast with lime accent",
+      primaryColors: "Pure Black (#000000), Electric Lime (#BFFF00), White",
+      typography: "Massive bold typography",
+      targetAudience: "Creative professionals, Brands, Startups",
+      keyFeatures: "MASSIVE Create headline with rotating words (Brands/Experiences/Impact/Futures), Lime asterisk accent, Portfolio grid with hover effects, 4 numbered services",
+      ctas: "START A PROJECT, VIEW WORK",
+      functionalityNeeds: "Portfolio showcase, Contact form",
+      specialNotes: "Ultra-bold minimal design",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-49",
+      websiteName: "LUXE Architecture",
+      businessType: "Architecture Studio",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Projects, Services, Stats, About, Testimonials, Contact, Footer)",
+      designStyle: "Sophisticated, Minimalist, Gallery-like with gold accents",
+      primaryColors: "Off-White (#FAFAFA), Charcoal Black (#1A1A1A), Warm Gold (#C9A962)",
+      typography: "Playfair Display headings, Inter body",
+      targetAudience: "High-end clients, Property developers, Design enthusiasts",
+      keyFeatures: "We Design Spaces That Inspire headline, 6-project masonry grid with hover effects, 4 services",
+      ctas: "VIEW PROJECTS, GET IN TOUCH",
+      functionalityNeeds: "Portfolio gallery, Contact form",
+      specialNotes: "Gallery-style architecture showcase",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-50",
+      websiteName: "APEX Fitness",
+      businessType: "Premium Fitness Studio / Gym",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Programs, Membership, Trainers, Transformation, Facilities, Schedule, Footer)",
+      designStyle: "Bold, Energetic, Motivational with dark theme and orange accents",
+      primaryColors: "Black (#0D0D0D), Electric Orange (#FF6B35), White (#FFFFFF), Dark Charcoal (#1A1A1A)",
+      typography: "Bebas Neue headings, Inter body",
+      targetAudience: "Fitness enthusiasts, Athletes, Londoners",
+      keyFeatures: "PUSH YOUR LIMITS headline, 4 programs (Strength/HIIT/Yoga/Boxing)",
+      ctas: "START YOUR JOURNEY, JOIN NOW",
+      functionalityNeeds: "Membership signup, Class schedule",
+      specialNotes: "High-energy fitness aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-51",
+      websiteName: "Zenflow Yoga Studio",
+      businessType: "Yoga Studio / Wellness",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Classes, Instructors, Schedule, Testimonials, Footer)",
+      designStyle: "Calming, Zen-like, Soft and organic with rounded corners",
+      primaryColors: "Sage Green (#7BA38C), Mint (#D4E6D7), Cream (#F5F5DC), Soft Pink (#F8E8B4BC), White",
+      typography: "Elegant serif headings, Clean sans-serif body",
+      targetAudience: "Yoga enthusiasts, Wellness seekers, All fitness levels",
+      keyFeatures: "Find Your Inner Balance headline, WELCOME TO SERENITY badge",
+      ctas: "VIEW CLASSES, BOOK A SESSION",
+      functionalityNeeds: "Class booking, Schedule display",
+      specialNotes: "Zen, calming wellness aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-52",
+      websiteName: "Paramount Estates",
+      businessType: "Luxury Real Estate Agency",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Properties Grid, Concierge, Services, Footer)",
+      designStyle: "Ultra-luxurious, Premium sophisticated with dark gradient and gold accents",
+      primaryColors: "Deep Black (#050510), Electric Cyan (#00D4FF), Purple Nebula (#7B2FBE)",
+      typography: "Elegant serif headings, Clean sans-serif body",
+      targetAudience: "High-net-worth individuals, Luxury property buyers",
+      keyFeatures: "Live Extraordinarily headline, Dark gradient hero overlay, Luxury mansion background, Trust indicators",
+      ctas: "EXPLORE PROPERTIES, CONTACT US",
+      functionalityNeeds: "Property listings, Inquiry form",
+      specialNotes: "Ultra-luxury real estate aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-53",
+      websiteName: "Brew & Bean Café",
+      businessType: "Coffee Shop / Café",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Menu, Footer)",
+      designStyle: "Warm, Premium coffee aesthetic with rounded containers",
+      primaryColors: "Coffee Brown (#8B4513), Cream (#F5DEB3), Beige (#F5E6D3), Accent Brown (#D268)",
+      typography: "Warm friendly typography",
+      targetAudience: "Coffee lovers, Professionals, Local community",
+      keyFeatures: "Enjoy Your Morning Coffee headline, Coffee cup imagery, Stats badges (1K+ Reviews, 3K+ Best Sell, 150+ Menu Items), 100% natural from Indonesia",
+      ctas: "ORDER NOW, VIEW MENU",
+      functionalityNeeds: "Online ordering, Menu display",
+      specialNotes: "Warm coffee shop aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-54",
+      websiteName: "Greenscape Landscaping",
+      businessType: "Landscaping Services",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Services, Logos, About, Testimonials, Footer)",
+      designStyle: "Professional, Nature-inspired with green gradient and rounded containers",
+      primaryColors: "Dark Green (#1B5E20), Medium Green (#4CAF50), Light Green (#81C784), White",
+      typography: "Clean professional sans-serif",
+      targetAudience: "Homeowners, Property managers, Commercial clients",
+      keyFeatures: "Transform Your Outdoor Space headline, Email signup with Get Started, Stats",
+      ctas: "GET STARTED, VIEW SERVICES",
+      functionalityNeeds: "Quote request form",
+      specialNotes: "Nature-inspired green aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-55",
+      websiteName: "STELLAR Space Tourism",
+      businessType: "Space Tourism / Luxury Travel",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Missions, Experience, Spacecraft, Training, Testimonials, FAQ, Footer)",
+      designStyle: "Sleek, Cosmic, Awe-inspiring with animated star particles",
+      primaryColors: "Deep Black (#050510), Electric Cyan (#00D4FF), Purple Nebula (#7B2FBE)",
+      typography: "Orbitron futuristic headings, Exo 2 body",
+      targetAudience: "High-net-worth adventurers, Space enthusiasts",
+      keyFeatures: "YOUR JOURNEY TO THE STARS BEGINS headline",
+      ctas: "BOOK YOUR MISSION, EXPLORE EXPERIENCES",
+      functionalityNeeds: "Booking inquiry, Mission info",
+      specialNotes: "Cosmic space tourism aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-56",
+      websiteName: "Novus Finance",
+      businessType: "Fintech / Digital Banking",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero with Glassmorphism)",
+      designStyle: "Futuristic Fintech, Dark gradient with glowing cyan/purple accents, Glassmorphism",
+      primaryColors: "Navy (#0A1628), Dark Blue (#162447), Cyan (#00D9FF), Purple (#7B61FF), White",
+      typography: "Modern clean sans-serif",
+      targetAudience: "Tech-savvy professionals, Digital banking users, Businesses",
+      keyFeatures: "Redefining Finance for the Digital Age headline (gradient text), FINTECH EXCELLENCE badge, Stats",
+      ctas: "GET STARTED, LEARN MORE",
+      functionalityNeeds: "Account signup, Feature showcase",
+      specialNotes: "Glassmorphism fintech aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-57",
+      websiteName: "CHRONICLE Publishing",
+      businessType: "Publishing House / Books",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Featured Releases, Bestsellers, Imprints, Author Spotlight, Book Clubs, Events, For Authors, Newsletter, Footer)",
+      designStyle: "Sophisticated, Literary, Elegant with book-inspired elements",
+      primaryColors: "Deep Navy (#1A2332), Warm Ivory (#F5F3EE), Rich Burgundy (#8B2942), Antique Gold (#C4A35A), Charcoal (#3D3D3D)",
+      typography: "Playfair Display headings, Source Sans Pro body",
+      targetAudience: "Book lovers, Authors, Literary enthusiasts",
+      keyFeatures: "Stories That Shape Worlds headline",
+      ctas: "EXPLORE BOOKS, SUBMIT MANUSCRIPT",
+      functionalityNeeds: "Book catalog, Author submissions",
+      specialNotes: "Literary publishing aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-58",
+      websiteName: "SERENITY Spa & Wellness",
+      businessType: "Luxury Day Spa / Wellness Center",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Signature Treatments, Spa Experience, Wellness Packages, Meet Our Therapists, Testimonials, Gift Cards, Booking, Footer)",
+      designStyle: "Calm, Luxurious, Serene with organic soft shadows and rounded corners",
+      primaryColors: "Soft Sage Green (#8FAE8B), Warm Cream (#FAF8F5), Deep Forest Green (#2C4A3E), Blush Pink (#E8D5D0), Muted Gold (#C9A962)",
+      typography: "Cormorant Garamond (elegant serif headlines), Lato (clean body text)",
+      targetAudience: "Wellness seekers, Spa enthusiasts",
+      keyFeatures: "Signature treatments, Wellness packages",
+      ctas: "BOOK NOW, VIEW PACKAGES",
+      functionalityNeeds: "Booking system, Gift card sales",
+      specialNotes: "Serene spa wellness aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-59",
+      websiteName: "Noir Coffee Roasters",
+      businessType: "Specialty Coffee Roasters / Café",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Featured Roasts, Our Process, Subscription Plans, Cafe Locations, Brewing Guides, Testimonials, Footer)",
+      designStyle: "Dark, Artisanal, Premium with warm lighting accents",
+      primaryColors: "Rich Espresso Brown (#1A1209), Warm Cream (#F5F0E6), Copper/Bronze (#B87333), Deep Charcoal (#2D2D2D)",
+      typography: "Playfair Display (elegant serif headlines), Lato (clean body text)",
+      targetAudience: "Coffee enthusiasts, Specialty coffee lovers, Artisan product seekers",
+      keyFeatures: "Crafted with Passion, Roasted to Perfection headline",
+      ctas: "SHOP COFFEE, SUBSCRIBE",
+      functionalityNeeds: "E-commerce, Subscription",
+      specialNotes: "Dark artisanal coffee aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-60",
+      websiteName: "Horizon Travel",
+      businessType: "Luxury Travel Agency",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Featured Destinations, Experience Types, Why Horizon, Testimonials, Featured In, Newsletter, Footer)",
+      designStyle: "Sophisticated, Wanderlust-inspiring, Premium with elegant typography",
+      primaryColors: "Deep Midnight Blue (#0A1628), Crisp White (#FFFFFF), Warm Sunset Gold (#D4A853), Soft Sky Blue (#87CEEB)",
+      typography: "Cormorant Garamond (elegant headings), Montserrat (body text and navigation)",
+      targetAudience: "Luxury travelers, Affluent adventurers",
+      keyFeatures: "Discover Your Next Adventure headline",
+      ctas: "EXPLORE DESTINATIONS, PLAN YOUR TRIP",
+      functionalityNeeds: "Trip planning inquiry, Destination showcase",
+      specialNotes: "Luxury travel wanderlust aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-61",
+      websiteName: "Artisan Leather Co.",
+      businessType: "Luxury Leather E-commerce",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Featured Collection, Craftsmanship, Bestsellers, Heritage, Why Artisan, Testimonials, Instagram, Footer)",
+      designStyle: "Rich, Sophisticated, Heritage-luxurious, Artisanal aesthetic",
+      primaryColors: "Deep Espresso Brown (#2C1810), Warm Cream (#F5F0E8), Antique Gold (#B8860B)",
+      typography: "Cormorant Garibaldi (elegant serif headings), Lato (clean body text)",
+      targetAudience: "Luxury goods buyers, Leather enthusiasts, Quality-conscious consumers",
+      keyFeatures: "Featured collection, Craftsmanship showcase, Heritage story",
+      ctas: "SHOP COLLECTION, DISCOVER HERITAGE",
+      functionalityNeeds: "E-commerce, Product catalog",
+      specialNotes: "Heritage luxury leather aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-62",
+      websiteName: "Meridian Analytics",
+      businessType: "SaaS Analytics Dashboard",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Features, Stats, How It Works, Integrations, Pricing, Testimonials, CTA, Footer)",
+      designStyle: "Modern, Professional tech aesthetic, Premium and trustworthy",
+      primaryColors: "Navy (#0F172A), White (#FFFFFF), Vibrant Blue (#3B82F6), Purple (#8B5CF6) gradients",
+      typography: "Inter (body text), Plus Jakarta Sans (headings)",
+      targetAudience: "Business analysts, Data-driven companies, Growth-focused organizations",
+      keyFeatures: "Turn Data Into Decisions headline, Feature showcase, Pricing tiers",
+      ctas: "START FREE TRIAL, VIEW DEMO",
+      functionalityNeeds: "SaaS signup, Demo, Pricing",
+      specialNotes: "Professional SaaS dashboard aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-63",
+      websiteName: "Bloom Botanicals",
+      businessType: "Premium Plant Shop / E-commerce",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Popular Collections, Bestsellers Grid, Plant Care, Why Choose Us, Newsletter, Instagram Feed, Footer)",
+      designStyle: "Fresh, Organic, Premium and welcoming aesthetic",
+      primaryColors: "Soft White (#FFFFFF), Forest Green (#1B4332), Terracotta (#C4A484), Sage Green",
+      typography: "DM Serif Display (headings), Inter (body text)",
+      targetAudience: "Plant enthusiasts, Home decor lovers, Indoor gardening beginners to experts",
+      keyFeatures: "Popular collections, Plant care guides, Newsletter signup",
+      ctas: "SHOP PLANTS, LEARN CARE TIPS",
+      functionalityNeeds: "E-commerce, Plant care resources",
+      specialNotes: "Fresh botanical plant shop aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-64",
+      websiteName: "Verde Wellness Spa",
+      businessType: "Premium Wellness Spa",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Featured Treatments, Wellness Advisor AI, Testimonials, Footer)",
+      designStyle: "Serene, Nature-inspired, Peaceful and luxurious, Grounded",
+      primaryColors: "Warm Cream (#FDF8F3), Deep Forest Green (#2D4739)",
+      typography: "Cormorant Garibaldi (elegant serif headings), Inter (body text)",
+      targetAudience: "Wellness seekers, Spa enthusiasts, Holistic health clients",
+      keyFeatures: "Find Your Inner Sanctuary headline, Wellness Advisor AI",
+      ctas: "BOOK TREATMENT, ASK WELLNESS AI",
+      functionalityNeeds: "Booking system, AI wellness advisor",
+      specialNotes: "Serene forest-inspired spa aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-65",
+      websiteName: "Flux Creative Studio",
+      businessType: "Premium Creative Agency",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Services, Featured Work, Contact, Footer)",
+      designStyle: "Bold, Edgy, Creative, High contrast with modern digital agency feel",
+      primaryColors: "Black (#000000), White (#FFFFFF), Electric Purple (#9D4EDD)",
+      typography: "Strong bold typography (likely bold sans-serif)",
+      targetAudience: "Brands, Startups, Companies seeking digital design services",
+      keyFeatures: "We Create Digital Experiences That Matter headline with That Matter in electric purple",
+      ctas: "START PROJECT, VIEW WORK",
+      functionalityNeeds: "Portfolio showcase, Contact form",
+      specialNotes: "Bold creative agency aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-66",
+      websiteName: "Zenith Eyewear",
+      businessType: "Premium Eyewear E-commerce",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Collections, Virtual Stylist, Footer)",
+      designStyle: "Bold, Modern, Fashion-forward, Premium lifestyle brand",
+      primaryColors: "Clean White/Light Gray (#F8F8F8), Black, Vibrant gradient accents (Pink/Orange/Yellow/Teal from products)",
+      typography: "Bold modern sans-serif typography",
+      targetAudience: "Fashion-conscious consumers, Eyewear enthusiasts, Style-forward shoppers",
+      keyFeatures: "See the World in Style headline with Style having colorful gradient",
+      ctas: "SHOP COLLECTION, TRY VIRTUAL STYLIST",
+      functionalityNeeds: "E-commerce, Virtual try-on",
+      specialNotes: "Fashion-forward eyewear aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-67",
+      websiteName: "Ember & Oak Coffee Co.",
+      businessType: "Artisan Coffee Roasters / E-commerce",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Product Cards, Coffee Recommender, Process Section, Footer)",
+      designStyle: "Warm, Inviting, Artisanal, Premium but approachable",
+      primaryColors: "Off-White (#FAF7F2), Dark Brown (#2D2420), Burnt Orange (#C65D3B)",
+      typography: "Elegant serif (headings), Clean sans-serif (body)",
+      targetAudience: "Coffee enthusiasts, Specialty coffee lovers, Artisan product seekers",
+      keyFeatures: "Crafted with Passion, Roasted to Perfection headline",
+      ctas: "SHOP COFFEE, FIND YOUR ROAST",
+      functionalityNeeds: "E-commerce, Coffee recommender",
+      specialNotes: "Warm artisanal coffee aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-68",
+      websiteName: "Prestige Motors",
+      businessType: "Luxury Car Dealership",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Inventory Section, Services Section, Footer)",
+      designStyle: "Ultra-luxurious automotive aesthetic, Premium showroom feel, Sleek and sophisticated",
+      primaryColors: "Deep Blacks, Silvers, Chrome accents, White",
+      typography: "Sleek sophisticated typography",
+      targetAudience: "Luxury car buyers, High-end automotive enthusiasts",
+      keyFeatures: "Drive Your Dreams bold white headline, Silver subheadline about curated collection of world's finest automobiles",
+      ctas: "BROWSE INVENTORY, SCHEDULE TEST DRIVE",
+      functionalityNeeds: "Vehicle inventory, Test drive booking",
+      specialNotes: "Luxury automotive showroom aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-69",
+      websiteName: "Prime & Oak Steakhouse",
+      businessType: "Premium Steakhouse / Fine Dining",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, About, Menu, Reservations, Footer)",
+      designStyle: "Luxurious dark steakhouse aesthetic, Rich blacks and golds, Horizontal gradient overlay, Premium fine dining",
+      primaryColors: "Rich Blacks, Gold (#D4AF37), White, Dark gradient overlays",
+      typography: "Elegant serif for headings (italic Culinary Excellence), Clean sans-serif for body",
+      targetAudience: "Fine dining enthusiasts, Steak lovers, Special occasion diners",
+      keyFeatures: "Experience Culinary Excellence headline",
+      ctas: "VIEW MENU, RESERVE TABLE",
+      functionalityNeeds: "Menu display, Reservation system",
+      specialNotes: "Luxurious steakhouse fine dining aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-70",
+      websiteName: "PawPerfect Pet Spa",
+      businessType: "Premium Pet Grooming / Pet Care",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Services, About, Gallery, Contact, Footer)",
+      designStyle: "Warm pet-friendly aesthetic, Soft blush pink rounded container card, White/cream background, Friendly and welcoming",
+      primaryColors: "Coral Pink (#FF6B6B), Blush Pink (#FFF0F0), Accent Rose (#E85D5D), White/Cream, Dark text",
+      typography: "Clean modern sans-serif, Friendly and approachable typography",
+      targetAudience: "Pet owners, Dog and cat lovers, Premium pet care seekers",
+      keyFeatures: "Premium pet grooming services, Gallery showcase",
+      ctas: "BOOK APPOINTMENT, VIEW SERVICES",
+      functionalityNeeds: "Appointment booking, Service showcase",
+      specialNotes: "Warm friendly pet spa aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-71",
+      websiteName: "Wanderlust Expeditions",
+      businessType: "Adventure Travel Agency",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Destinations, Adventures, About, Contact, Footer)",
+      designStyle: "Modern adventure travel aesthetic, Full-width hero with stunning mountain landscape, Dark gradient overlay",
+      primaryColors: "Dark/Black, Bright Orange (#F97316), White, Mountain landscape imagery",
+      typography: "Bold modern sans-serif, Large impactful headings",
+      targetAudience: "Adventure seekers, Travel enthusiasts, Outdoor adventurers",
+      keyFeatures: "Adventure destination showcase, Mountain landscape imagery",
+      ctas: "EXPLORE ADVENTURES, PLAN YOUR TRIP",
+      functionalityNeeds: "Trip planning, Destination showcase",
+      specialNotes: "Adventure travel mountain aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-72",
+      websiteName: "Apex Performance",
+      businessType: "Premium Personal Training / Fitness",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Programs, Trainers, Results, Contact, Footer)",
+      designStyle: "Dark powerful aesthetic, Text protected by gradient on left, Dramatic fitness imagery on right, Premium athletic",
+      primaryColors: "Dark/Black, Red (#DC2626), White, Gym/fitness imagery",
+      typography: "Bold condensed sans-serif for headings, Clean sans-serif for body, Italic accent for Transform Your Life",
+      targetAudience: "Fitness enthusiasts, Athletes, Transformation seekers",
+      keyFeatures: "Transform Your Life headline, Training programs, Results showcase",
+      ctas: "START TRAINING, VIEW PROGRAMS",
+      functionalityNeeds: "Program signup, Trainer booking",
+      specialNotes: "Dark powerful fitness aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-73",
+      websiteName: "Petal & Bloom Floristry",
+      businessType: "Premium Florist Shop",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Featured Products, Footer)",
+      designStyle: "Soft botanical palette, Large rounded container hero, Elegant and feminine, Fresh and natural feel",
+      primaryColors: "Dusty Rose (#D4A5A5), Forest Green (#2D4739), Cream (#FDF8F3)",
+      typography: "Elegant serif for headings (script-like Beautiful Blooms), Clean sans-serif for body",
+      targetAudience: "Flower buyers, Event planners, Gift shoppers, Wedding clients",
+      keyFeatures: "Beautiful Blooms headline, Featured floral arrangements",
+      ctas: "SHOP FLOWERS, ORDER ARRANGEMENT",
+      functionalityNeeds: "E-commerce, Floral ordering",
+      specialNotes: "Soft botanical floristry aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-74",
+      websiteName: "SwiftMove Relocations",
+      businessType: "Premium Moving Company",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Services, Quote Estimator, Footer)",
+      designStyle: "Bold professional palette, Large rounded container hero, Navy blue background, Trustworthy and reliable feel",
+      primaryColors: "Navy Blue (#1E3A5F), Bright Orange (#F97316), White, Light Blue (#60A5FA)",
+      typography: "Bold sans-serif for headings, Clean professional sans-serif for body",
+      targetAudience: "Home movers, Residential and commercial clients, Relocation seekers",
+      keyFeatures: "Your Move Made Easy headline, Quote estimator tool",
+      ctas: "GET QUOTE, BOOK MOVE",
+      functionalityNeeds: "Quote calculator, Booking system",
+      specialNotes: "Professional moving company aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-75",
+      websiteName: "Luxe Interiors Studio",
+      businessType: "Premium Interior Design",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Services, Portfolio, Contact, Footer)",
+      designStyle: "Warm elegant palette, Large rounded container hero, Taupe/beige background, Sophisticated and luxurious feel",
+      primaryColors: "Taupe (#F5F0EB), Warm Gold (#C9A86C), Charcoal (#2D2D2D), Cream (#EDE5DB)",
+      typography: "Elegant serif for headings (script-like Space Into Art), Clean sans-serif for body",
+      targetAudience: "Homeowners, Interior design clients, Luxury property owners",
+      keyFeatures: "Transform Your Space Into Art headline, Portfolio showcase",
+      ctas: "VIEW PORTFOLIO, START PROJECT",
+      functionalityNeeds: "Portfolio gallery, Consultation booking",
+      specialNotes: "Elegant interior design aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-76",
+      websiteName: "Enchanted Moments Events",
+      businessType: "Premium Wedding Planner",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Services, Portfolio, About, Testimonials, Contact, Footer)",
+      designStyle: "Romantic wedding color palette, Soft blush pink rounded container, Elegant and feminine",
+      primaryColors: "Blush Pink (#FDF2F8), Rose (#EC4899), Charcoal (#1F2937), White",
+      typography: "Elegant serif for headings (script-like Perfect Day), Clean sans-serif for body",
+      targetAudience: "Engaged couples, Wedding clients, Event seekers",
+      keyFeatures: "Create Your Perfect Day headline, Wedding portfolio",
+      ctas: "PLAN YOUR WEDDING, VIEW GALLERY",
+      functionalityNeeds: "Consultation booking, Portfolio showcase",
+      specialNotes: "Romantic wedding planner aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-77",
+      websiteName: "Sweet Crumbs Bakery",
+      businessType: "Premium Artisan Bakery",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Menu Preview, AI Assistant, Footer)",
+      designStyle: "Warm bakery color palette, Peachy-pink rounded container, Friendly and delicious feel, Artisanal charm",
+      primaryColors: "Rose Pink (#F43F5E), Peachy Pink (#FECACA), Accent Brown (#78350F), White/Cream",
+      typography: "Playful serif for headings (script-like tastier), Clean sans-serif for body",
+      targetAudience: "Bakery customers, Sweet treat lovers, Custom cake seekers",
+      keyFeatures: "Bake the World a Tastier Place headline, AI assistant for recommendations",
+      ctas: "ORDER NOW, ASK BAKING AI",
+      functionalityNeeds: "Online ordering, AI recommendation",
+      specialNotes: "Warm artisan bakery aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-78",
+      websiteName: "Arctic Breeze Climate Control",
+      businessType: "Premium HVAC Services",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Services, Why Choose Us, Testimonials, Service Areas, Contact, Footer)",
+      designStyle: "Professional HVAC color palette, Deep blue rounded container, Trustworthy and reliable feel",
+      primaryColors: "Deep Blue (#1E40AF), Slate (#334155), Accent Orange (#EA580C), White",
+      typography: "Bold sans-serif for headings, Clean professional sans-serif for body",
+      targetAudience: "Homeowners, Commercial property clients, HVAC service seekers",
+      keyFeatures: "Professional HVAC services, Service area coverage, Trust indicators",
+      ctas: "GET QUOTE, SCHEDULE SERVICE",
+      functionalityNeeds: "Quote request, Service booking",
+      specialNotes: "Professional HVAC service aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-79",
+      websiteName: "Ember & Oak Bistro",
+      businessType: "Premium Restaurant / Bistro",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Featured Menu, About/Story, Testimonials, Gallery, Reservations, Contact, Footer)",
+      designStyle: "Elegant restaurant color palette, Deep forest green rounded container, Warm and sophisticated",
+      primaryColors: "Forest Green (#1B4332), Charcoal (#1F2937), Amber (#D97706), White/Light",
+      typography: "Elegant serif for headings, Clean sans-serif for body",
+      targetAudience: "Fine dining enthusiasts, Food lovers, Restaurant goers",
+      keyFeatures: "Unforgettable Dining Experience headline, Featured menu, Gallery",
+      ctas: "VIEW MENU, RESERVE TABLE",
+      functionalityNeeds: "Menu display, Reservation system",
+      specialNotes: "Elegant bistro dining aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-80",
+      websiteName: "LensCraft Studios",
+      businessType: "Premium Photography Studio",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Portfolio, Services, About, Contact, Footer)",
+      designStyle: "Professional photography color palette, Deep purple/violet rounded container, Artistic and elegant",
+      primaryColors: "Purple (#4C1D95), Violet (#7C3AED), Gold/Amber (#F59E0B), White/Light",
+      typography: "Elegant serif for headings (script-like Beautiful), Clean sans-serif for body",
+      targetAudience: "Wedding couples, Portrait clients, Event organizers, Commercial clients",
+      keyFeatures: "Capturing Life's Beautiful Moments headline, Portfolio showcase",
+      ctas: "VIEW PORTFOLIO, BOOK SESSION",
+      functionalityNeeds: "Portfolio gallery, Session booking",
+      specialNotes: "Artistic photography studio aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-81",
+      websiteName: "HomeHaven Realty",
+      businessType: "Premium Real Estate Agency",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero with Search, Properties, About, Agents, Contact, Footer)",
+      designStyle: "Professional real estate color palette, Soft mint/sage green rounded container, Calming and trustworthy",
+      primaryColors: "Emerald (#2E7D32), Mint (#E8F5E9), Gold (#FFB300), White/Cream, Dark text",
+      typography: "Clean modern sans-serif for headings, Professional sans-serif for body",
+      targetAudience: "Home buyers, Property seekers, Real estate clients",
+      keyFeatures: "Find Your Dream Home headline, Property search, Agent profiles",
+      ctas: "SEARCH PROPERTIES, CONTACT AGENT",
+      functionalityNeeds: "Property search, Agent contact",
+      specialNotes: "Professional real estate aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-82",
+      websiteName: "IronPulse Fitness",
+      businessType: "Premium Fitness Gym",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Programs, Stats, Trainers, Membership, Contact, Footer)",
+      designStyle: "Energetic fitness color palette, Dark navy blue rounded container, Bold and powerful",
+      primaryColors: "Navy (#1A2238), Neon Green (#B0FABBA), White (#FFFFFF), Light gray",
+      typography: "Bold modern sans-serif for headings (uppercase impact style), Clean sans-serif for body",
+      targetAudience: "Athletes, Fitness enthusiasts, Personal training clients, Group fitness seekers",
+      keyFeatures: "Transform Your Body headline, Programs, Stats, Membership tiers",
+      ctas: "JOIN NOW, VIEW PROGRAMS",
+      functionalityNeeds: "Membership signup, Program info",
+      specialNotes: "Bold energetic fitness aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-83",
+      websiteName: "Blade & Bloom Salon",
+      businessType: "Premium Hair Salon & Barbershop",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Services, Stylists, Gallery, Testimonials, Contact, Footer)",
+      designStyle: "Elegant salon color palette, Rich burgundy/maroon rounded container, Luxurious and sophisticated",
+      primaryColors: "Burgundy (#7C2D43), Charcoal (#374151), Rose Gold (#E8A87C), White",
+      typography: "Elegant serif for headings, Clean sans-serif for body",
+      targetAudience: "Hair salon clients, Barbershop clients, Beauty seekers, Bridal clients",
+      keyFeatures: "Where Style Meets Artistry headline, Services, Stylist profiles, Gallery",
+      ctas: "BOOK APPOINTMENT, VIEW SERVICES",
+      functionalityNeeds: "Appointment booking, Stylist showcase",
+      specialNotes: "Elegant salon aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-84",
+      websiteName: "Sterling Justice Law",
+      businessType: "Premium Law Firm",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Practice Areas, Attorneys, Case Results, Contact, Footer)",
+      designStyle: "Professional law firm color palette, Deep navy blue rounded container, Authoritative and trustworthy",
+      primaryColors: "Navy (#1E3A5F), Slate (#475569), Gold (#D4AF37), White",
+      typography: "Elegant serif for headings, Clean sans-serif for body",
+      targetAudience: "Legal clients, Personal injury victims, Corporate clients, Individuals seeking justice",
+      keyFeatures: "Trusted Legal Excellence headline, Practice areas, Attorney profiles, Case results",
+      ctas: "FREE CONSULTATION, CONTACT US",
+      functionalityNeeds: "Consultation booking, Case inquiry",
+      specialNotes: "Professional law firm aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-85",
+      websiteName: "TurboFix Auto Care",
+      businessType: "Premium Auto Repair Shop",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Services, Diagnostic Assistant, About, Gallery, Contact, Footer)",
+      designStyle: "Professional automotive color palette, Dark charcoal/slate gray rounded container, Trustworthy and reliable",
+      primaryColors: "Orange (#F97316), Dark Slate (#1E293B), Red (#EF4444), White",
+      typography: "Bold modern sans-serif for headings, Clean sans-serif for body",
+      targetAudience: "Car owners, Vehicle maintenance seekers, Auto repair clients",
+      keyFeatures: "Expert Auto Care You Can Trust headline, Diagnostic AI assistant, Services",
+      ctas: "BOOK SERVICE, ASK DIAGNOSTIC AI",
+      functionalityNeeds: "Service booking, AI diagnostic",
+      specialNotes: "Professional auto repair aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-86",
+      websiteName: "Bright Smile Dental",
+      businessType: "Premium Dental Clinic",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Services, Stats, Team, Testimonials, Contact, Footer)",
+      designStyle: "Warm dental color palette, Soft coral/peach rounded container, Friendly and professional",
+      primaryColors: "Coral (#E87C), Secondary (#85C1E9), Dark Text (#2C3E50), White",
+      typography: "Elegant serif for headings, Clean sans-serif for body",
+      targetAudience: "Dental patients, Families, Individuals seeking dental care",
+      keyFeatures: "Your Perfect Smile Starts Here large dark heading, Services, Team profiles, Stats",
+      ctas: "BOOK APPOINTMENT, VIEW SERVICES",
+      functionalityNeeds: "Appointment booking, Service info",
+      specialNotes: "Warm friendly dental aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-87",
+      websiteName: "Sparkle Clean Pro",
+      businessType: "Premium Cleaning Service",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Services, Promotion, CTA Section, Stats, Footer)",
+      designStyle: "Clean modern color palette, Dark teal rounded container, Fresh and professional",
+      primaryColors: "Teal/Mint (#E8F5F3), White, Dark text",
+      typography: "Bold modern sans-serif for headings, Clean sans-serif for body",
+      targetAudience: "Homeowners, Property managers, Cleaning service seekers",
+      keyFeatures: "Sparkling Homes Start With Sparkle Clean large white headline, Services, Promotion",
+      ctas: "BOOK CLEANING, GET QUOTE",
+      functionalityNeeds: "Booking system, Quote request",
+      specialNotes: "Fresh professional cleaning aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-88",
+      websiteName: "AutoFix Pro",
+      businessType: "Premium Luxury Auto Repair",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Services, Why Choose Us, About, Booking, Testimonials, Our Work, Footer)",
+      designStyle: "Premium dark automotive theme, Deep black with gradients, Luxury car brand aesthetic",
+      primaryColors: "Deep Black (#0a0a0a), Electric Blue (#00d4ff), Deep Blue (#0066cc), Silver/Platinum (#c0c0c0), White",
+      typography: "Modern sans-serif (Montserrat), Large bold headlines, Thin elegant subheadings",
+      targetAudience: "Luxury car owners, Performance vehicle enthusiasts",
+      keyFeatures: "Premium auto services, Why choose us, Booking system, Work gallery",
+      ctas: "BOOK SERVICE, VIEW SERVICES",
+      functionalityNeeds: "Service booking, Gallery showcase",
+      specialNotes: "Luxury automotive service aesthetic",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "catalog-89",
+      websiteName: "AutoFix Pro v2",
+      businessType: "Premium Luxury Auto Repair",
+      totalPages: 1,
+      pageList: "Home (single-page: Hero, Services, Why Choose Us, About, Booking, Testimonials, Footer)",
+      designStyle: "Premium dark automotive theme, Deep black with gradients, Luxury car brand aesthetic",
+      primaryColors: "Deep Black (#0a0a0a), Electric Blue (#00d4ff), Deep Blue (#0066cc), Silver/Platinum (#c0c0c0), White",
+      typography: "Modern sans-serif (Montserrat), Large bold headlines, Thin elegant subheadings",
+      targetAudience: "Luxury car owners, Performance vehicle enthusiasts",
+      keyFeatures: "Premium auto services, Why choose us, Booking system",
+      ctas: "BOOK SERVICE, VIEW SERVICES",
+      functionalityNeeds: "Service booking, Testimonials",
+      specialNotes: "Luxury automotive service aesthetic v2",
+      linkToSite: "",
+      previewType: 'iframe',
+      previewImage: '',
+      isCompleted: false,
+      isFavorite: false,
+      tasks: [],
+      promptHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+  ];
+};
+
+export const WebsiteCatalogView: React.FC = () => {
+  const { showToast } = useToast();
+
+  // Data state
+  const [catalogItems, setCatalogItems] = useState<WebsiteCatalogItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [businessTypeFilter, setBusinessTypeFilter] = useState<string>('all');
+  const [completionFilter, setCompletionFilter] = useState<CatalogCompletionStatus>('all');
+  const [industryFilter, setIndustryFilter] = useState<CatalogIndustryCategory>('all');
+  const [colorThemeFilter, setColorThemeFilter] = useState<CatalogColorTheme>('all');
+  const [designStyleFilter, setDesignStyleFilter] = useState<CatalogDesignStyle>('all');
+  const [pageCountFilter, setPageCountFilter] = useState<CatalogPageCategory>('all');
+
+  // Sort states
+  const [sortField, setSortField] = useState<CatalogSortField>('createdAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Dropdown visibility
+  const [businessTypeDropdownOpen, setBusinessTypeDropdownOpen] = useState(false);
+  const [completionDropdownOpen, setCompletionDropdownOpen] = useState(false);
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
+  const [industryDropdownOpen, setIndustryDropdownOpen] = useState(false);
+  const [colorThemeDropdownOpen, setColorThemeDropdownOpen] = useState(false);
+  const [designStyleDropdownOpen, setDesignStyleDropdownOpen] = useState(false);
+  const [pageCountDropdownOpen, setPageCountDropdownOpen] = useState(false);
+
+  // Card expansion state
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+
+  // Iframe lock state
+  const [unlockedCards, setUnlockedCards] = useState<Set<string>>(new Set());
+
+  // Iframe loading state
+  const [loadingIframes, setLoadingIframes] = useState<Set<string>>(new Set());
+
+  // Preview hover state for showing quick actions
+  const [hoveredPreview, setHoveredPreview] = useState<string | null>(null);
+
+  // Ref for file input (for quick image upload on hover)
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadTargetId, setUploadTargetId] = useState<string | null>(null);
+
+  // Link input modal state for quick live link entry
+  const [showLinkInput, setShowLinkInput] = useState(false);
+  const [linkInputTargetId, setLinkInputTargetId] = useState<string | null>(null);
+  const [tempLinkValue, setTempLinkValue] = useState('');
+
+  // Modal states
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<WebsiteCatalogItem | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<WebsiteCatalogItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<WebsiteCatalogItem | null>(null);
+  const [detailIframeLoading, setDetailIframeLoading] = useState(false);
+
+  // New task input for detail modal
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+
+  // Inline editing state for detail modal
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState('');
+
+  // Prompt history panel state
+  const [showPromptHistory, setShowPromptHistory] = useState(false);
+  const [expandedPrompts, setExpandedPrompts] = useState<Set<string>>(new Set());
+  const [newPromptTitle, setNewPromptTitle] = useState('');
+  const [newPromptText, setNewPromptText] = useState('');
+  const [editingPromptId, setEditingPromptId] = useState<string | null>(null);
+  const [editingPromptTitle, setEditingPromptTitle] = useState('');
+  const [editingPromptText, setEditingPromptText] = useState('');
+
+  // Form state
+  const getEmptyForm = (): Partial<WebsiteCatalogItem> => ({
+    websiteName: '',
+    businessType: '',
+    totalPages: 1,
+    pageList: '',
+    designStyle: '',
+    primaryColors: '',
+    typography: '',
+    targetAudience: '',
+    keyFeatures: '',
+    ctas: '',
+    functionalityNeeds: '',
+    specialNotes: '',
+    linkToSite: '',
+    previewType: 'iframe',
+    previewImage: '',
+    isCompleted: false,
+    isFavorite: false,
+    tasks: [],
+    promptHistory: [],
+  });
+
+  const [formData, setFormData] = useState<Partial<WebsiteCatalogItem>>(getEmptyForm());
+
+  // Load from localStorage or use defaults
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(CATALOG_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setCatalogItems(parsed);
+          setIsLoading(false);
+          return;
+        }
+      }
+    } catch (e) {
+      console.error('Error loading catalog items:', e);
+      try {
+        localStorage.removeItem(CATALOG_STORAGE_KEY);
+      } catch {
+        // Ignore removal errors
+      }
+    }
+    // Use default items if nothing saved
+    const defaults = getDefaultCatalogItems();
+    setCatalogItems(defaults);
+    try {
+      localStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(defaults));
+    } catch {
+      console.warn('Could not save default catalog items to localStorage');
+    }
+    setIsLoading(false);
+  }, []);
+
+  // Auto-save to localStorage (with error handling)
+  useEffect(() => {
+    if (!isLoading && catalogItems.length > 0) {
+      try {
+        localStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(catalogItems));
+      } catch (e) {
+        console.warn('Could not save catalog items to localStorage:', e);
+        // Don't crash on quota exceeded - data will work in memory for this session
+      }
+    }
+  }, [catalogItems, isLoading]);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setBusinessTypeDropdownOpen(false);
+      setCompletionDropdownOpen(false);
+      setSortDropdownOpen(false);
+      setIndustryDropdownOpen(false);
+      setColorThemeDropdownOpen(false);
+      setDesignStyleDropdownOpen(false);
+      setPageCountDropdownOpen(false);
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  // Get unique business types from data
+  const uniqueBusinessTypes = React.useMemo(() => {
+    const types = new Set(catalogItems.map(item => item.businessType).filter(Boolean));
+    return Array.from(types).sort();
+  }, [catalogItems]);
+
+  // Helper function to check if an item matches a category by keywords
+  const matchesKeywords = (text: string, keywords: string[]): boolean => {
+    if (!keywords.length) return true;
+    const lowerText = text.toLowerCase();
+    return keywords.some(keyword => lowerText.includes(keyword.toLowerCase()));
+  };
+
+  // Helper function to get page count category
+  const getPageCategory = (totalPages: number): CatalogPageCategory => {
+    if (totalPages <= 1) return 'single-page';
+    if (totalPages <= 5) return 'standard';
+    return 'full-featured';
+  };
+
+  // Filter and sort items
+  const filteredAndSortedItems = React.useMemo(() => {
+    let result = catalogItems.filter(item => {
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        if (!item.websiteName.toLowerCase().includes(query) &&
+            !item.businessType.toLowerCase().includes(query) &&
+            !item.designStyle.toLowerCase().includes(query)) {
+          return false;
+        }
+      }
+
+      // Business type filter (exact match)
+      if (businessTypeFilter !== 'all' && item.businessType !== businessTypeFilter) {
+        return false;
+      }
+
+      // Completion filter
+      if (completionFilter === 'completed' && !item.isCompleted) return false;
+      if (completionFilter === 'not-completed' && item.isCompleted) return false;
+
+      // Industry filter (keyword-based)
+      if (industryFilter !== 'all') {
+        const industryCategory = CATALOG_INDUSTRY_CATEGORIES.find(c => c.value === industryFilter);
+        if (industryCategory) {
+          const searchText = `${item.businessType} ${item.websiteName} ${item.targetAudience}`;
+          if (!matchesKeywords(searchText, industryCategory.keywords)) {
+            return false;
+          }
+        }
+      }
+
+      // Color theme filter (keyword-based)
+      if (colorThemeFilter !== 'all') {
+        const colorCategory = CATALOG_COLOR_THEMES.find(c => c.value === colorThemeFilter);
+        if (colorCategory) {
+          if (!matchesKeywords(item.primaryColors, colorCategory.keywords)) {
+            return false;
+          }
+        }
+      }
+
+      // Design style filter (keyword-based)
+      if (designStyleFilter !== 'all') {
+        const styleCategory = CATALOG_DESIGN_STYLES.find(c => c.value === designStyleFilter);
+        if (styleCategory) {
+          const searchText = `${item.designStyle} ${item.keyFeatures}`;
+          if (!matchesKeywords(searchText, styleCategory.keywords)) {
+            return false;
+          }
+        }
+      }
+
+      // Page count filter
+      if (pageCountFilter !== 'all') {
+        const itemPageCategory = getPageCategory(item.totalPages);
+        if (itemPageCategory !== pageCountFilter) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    // Sorting
+    result.sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case 'websiteName':
+          comparison = a.websiteName.localeCompare(b.websiteName);
+          break;
+        case 'businessType':
+          comparison = a.businessType.localeCompare(b.businessType);
+          break;
+        case 'totalPages':
+          comparison = a.totalPages - b.totalPages;
+          break;
+        case 'createdAt':
+          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+
+    return result;
+  }, [catalogItems, searchQuery, businessTypeFilter, completionFilter, industryFilter, colorThemeFilter, designStyleFilter, pageCountFilter, sortField, sortDirection]);
+
+  // Actions
+  const toggleComplete = (id: string) => {
+    setCatalogItems(prev => prev.map(item =>
+      item.id === id ? { ...item, isCompleted: !item.isCompleted, updatedAt: new Date().toISOString() } : item
+    ));
+  };
+
+  const toggleFavorite = (id: string) => {
+    setCatalogItems(prev => prev.map(item =>
+      item.id === id ? { ...item, isFavorite: !item.isFavorite, updatedAt: new Date().toISOString() } : item
+    ));
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpandedCards(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleCardLock = (id: string) => {
+    setUnlockedCards(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleIframeLoad = (id: string) => {
+    setLoadingIframes(prev => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  };
+
+  // Quick preview update functions
+  const handleQuickImageUpload = (itemId: string, file: File) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      const now = new Date().toISOString();
+      setCatalogItems(prev => prev.map(item =>
+        item.id === itemId
+          ? { ...item, previewType: 'image', previewImage: base64, updatedAt: now }
+          : item
+      ));
+      showToast('success', 'Screenshot uploaded');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleQuickLinkSave = (itemId: string, url: string) => {
+    if (!url.trim()) return;
+    const now = new Date().toISOString();
+    setCatalogItems(prev => prev.map(item =>
+      item.id === itemId
+        ? { ...item, previewType: 'iframe', linkToSite: url.trim(), updatedAt: now }
+        : item
+    ));
+    // Add to loading iframes
+    setLoadingIframes(prev => new Set(prev).add(itemId));
+    setShowLinkInput(false);
+    setLinkInputTargetId(null);
+    setTempLinkValue('');
+    showToast('success', 'Live link added');
+  };
+
+  const triggerFileUpload = (itemId: string) => {
+    setUploadTargetId(itemId);
+    fileInputRef.current?.click();
+  };
+
+  const openLinkInput = (itemId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const item = catalogItems.find(i => i.id === itemId);
+    setLinkInputTargetId(itemId);
+    setTempLinkValue(item?.linkToSite || '');
+    setShowLinkInput(true);
+  };
+
+  // Task management functions
+  const addTask = (itemId: string, title: string) => {
+    if (!title.trim()) return;
+    const now = new Date().toISOString();
+    const newTask: CatalogTask = {
+      id: generateId(),
+      title: title.trim(),
+      completed: false,
+      createdAt: now,
+    };
+    setCatalogItems(prev => prev.map(item =>
+      item.id === itemId
+        ? { ...item, tasks: [...(item.tasks || []), newTask], updatedAt: now }
+        : item
+    ));
+    // Update selectedItem if viewing this item
+    if (selectedItem?.id === itemId) {
+      setSelectedItem(prev => prev ? { ...prev, tasks: [...(prev.tasks || []), newTask], updatedAt: now } : null);
+    }
+  };
+
+  const toggleTask = (itemId: string, taskId: string) => {
+    const now = new Date().toISOString();
+    setCatalogItems(prev => prev.map(item =>
+      item.id === itemId
+        ? {
+            ...item,
+            tasks: (item.tasks || []).map(task =>
+              task.id === taskId ? { ...task, completed: !task.completed } : task
+            ),
+            updatedAt: now,
+          }
+        : item
+    ));
+    // Update selectedItem if viewing this item
+    if (selectedItem?.id === itemId) {
+      setSelectedItem(prev => prev ? {
+        ...prev,
+        tasks: (prev.tasks || []).map(task =>
+          task.id === taskId ? { ...task, completed: !task.completed } : task
+        ),
+        updatedAt: now,
+      } : null);
+    }
+  };
+
+  const deleteTask = (itemId: string, taskId: string) => {
+    const now = new Date().toISOString();
+    setCatalogItems(prev => prev.map(item =>
+      item.id === itemId
+        ? {
+            ...item,
+            tasks: (item.tasks || []).filter(task => task.id !== taskId),
+            updatedAt: now,
+          }
+        : item
+    ));
+    // Update selectedItem if viewing this item
+    if (selectedItem?.id === itemId) {
+      setSelectedItem(prev => prev ? {
+        ...prev,
+        tasks: (prev.tasks || []).filter(task => task.id !== taskId),
+        updatedAt: now,
+      } : null);
+    }
+  };
+
+  // Prompt history management functions
+  const togglePromptExpand = (promptId: string) => {
+    setExpandedPrompts(prev => {
+      const next = new Set(prev);
+      if (next.has(promptId)) {
+        next.delete(promptId);
+      } else {
+        next.add(promptId);
+      }
+      return next;
+    });
+  };
+
+  const addPrompt = (itemId: string) => {
+    if (!newPromptTitle.trim() || !newPromptText.trim()) {
+      showToast('error', 'Please enter both title and prompt text');
+      return;
+    }
+    const now = new Date().toISOString();
+    const existingPrompts = selectedItem?.promptHistory || [];
+    const promptNumber = existingPrompts.length + 1;
+    const newPrompt: CatalogPromptHistory = {
+      id: generateId(),
+      title: newPromptTitle.trim() || `Prompt ${promptNumber}`,
+      prompt: newPromptText.trim(),
+      createdAt: now,
+    };
+    setCatalogItems(prev => prev.map(item =>
+      item.id === itemId
+        ? { ...item, promptHistory: [...(item.promptHistory || []), newPrompt], updatedAt: now }
+        : item
+    ));
+    if (selectedItem?.id === itemId) {
+      setSelectedItem(prev => prev ? {
+        ...prev,
+        promptHistory: [...(prev.promptHistory || []), newPrompt],
+        updatedAt: now,
+      } : null);
+    }
+    setNewPromptTitle('');
+    setNewPromptText('');
+    showToast('success', 'Prompt added to history');
+  };
+
+  const startEditingPrompt = (prompt: CatalogPromptHistory) => {
+    setEditingPromptId(prompt.id);
+    setEditingPromptTitle(prompt.title);
+    setEditingPromptText(prompt.prompt);
+  };
+
+  const savePromptEdit = (itemId: string) => {
+    if (!editingPromptId || !editingPromptTitle.trim() || !editingPromptText.trim()) return;
+    const now = new Date().toISOString();
+    setCatalogItems(prev => prev.map(item =>
+      item.id === itemId
+        ? {
+            ...item,
+            promptHistory: (item.promptHistory || []).map(p =>
+              p.id === editingPromptId
+                ? { ...p, title: editingPromptTitle.trim(), prompt: editingPromptText.trim() }
+                : p
+            ),
+            updatedAt: now,
+          }
+        : item
+    ));
+    if (selectedItem?.id === itemId) {
+      setSelectedItem(prev => prev ? {
+        ...prev,
+        promptHistory: (prev.promptHistory || []).map(p =>
+          p.id === editingPromptId
+            ? { ...p, title: editingPromptTitle.trim(), prompt: editingPromptText.trim() }
+            : p
+        ),
+        updatedAt: now,
+      } : null);
+    }
+    setEditingPromptId(null);
+    setEditingPromptTitle('');
+    setEditingPromptText('');
+    showToast('success', 'Prompt updated');
+  };
+
+  const cancelPromptEdit = () => {
+    setEditingPromptId(null);
+    setEditingPromptTitle('');
+    setEditingPromptText('');
+  };
+
+  const deletePrompt = (itemId: string, promptId: string) => {
+    const now = new Date().toISOString();
+    setCatalogItems(prev => prev.map(item =>
+      item.id === itemId
+        ? {
+            ...item,
+            promptHistory: (item.promptHistory || []).filter(p => p.id !== promptId),
+            updatedAt: now,
+          }
+        : item
+    ));
+    if (selectedItem?.id === itemId) {
+      setSelectedItem(prev => prev ? {
+        ...prev,
+        promptHistory: (prev.promptHistory || []).filter(p => p.id !== promptId),
+        updatedAt: now,
+      } : null);
+    }
+    showToast('success', 'Prompt removed');
+  };
+
+  const copyPromptToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('success', 'Prompt copied to clipboard');
+    }).catch(() => {
+      showToast('error', 'Failed to copy prompt');
+    });
+  };
+
+  // Inline editing functions
+  const startEditing = (field: string, currentValue: string) => {
+    setEditingField(field);
+    setEditingValue(currentValue || '');
+  };
+
+  const saveInlineEdit = () => {
+    if (!editingField || !selectedItem) return;
+
+    const now = new Date().toISOString();
+    const updatedValue = editingValue.trim();
+
+    // Update the catalog items
+    setCatalogItems(prev => prev.map(item =>
+      item.id === selectedItem.id
+        ? { ...item, [editingField]: editingField === 'totalPages' ? parseInt(updatedValue) || 1 : updatedValue, updatedAt: now }
+        : item
+    ));
+
+    // Update selectedItem
+    setSelectedItem(prev => prev ? {
+      ...prev,
+      [editingField]: editingField === 'totalPages' ? parseInt(updatedValue) || 1 : updatedValue,
+      updatedAt: now,
+    } : null);
+
+    setEditingField(null);
+    setEditingValue('');
+  };
+
+  const cancelInlineEdit = () => {
+    setEditingField(null);
+    setEditingValue('');
+  };
+
+  // Editable field component
+  const EditableField: React.FC<{
+    field: string;
+    value: string;
+    label: string;
+    multiline?: boolean;
+    placeholder?: string;
+  }> = ({ field, value, label, multiline = false, placeholder }) => {
+    const isEditing = editingField === field;
+
+    if (isEditing) {
+      return multiline ? (
+        <textarea
+          value={editingValue}
+          onChange={(e) => setEditingValue(e.target.value)}
+          onBlur={saveInlineEdit}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') cancelInlineEdit();
+          }}
+          autoFocus
+          placeholder={placeholder || `Enter ${label.toLowerCase()}...`}
+          className="w-full px-2 py-1.5 text-sm border border-gold-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 bg-white dark:bg-dark-elevated dark:text-dark-text resize-none min-h-[60px]"
+          rows={3}
+        />
+      ) : (
+        <input
+          type="text"
+          value={editingValue}
+          onChange={(e) => setEditingValue(e.target.value)}
+          onBlur={saveInlineEdit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') saveInlineEdit();
+            if (e.key === 'Escape') cancelInlineEdit();
+          }}
+          autoFocus
+          placeholder={placeholder || `Enter ${label.toLowerCase()}...`}
+          className="w-full px-2 py-1 text-sm border border-gold-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 bg-white dark:bg-dark-elevated dark:text-dark-text"
+        />
+      );
+    }
+
+    return (
+      <p
+        onDoubleClick={() => startEditing(field, value)}
+        className={`text-sm cursor-pointer rounded px-1 -mx-1 transition-colors hover:bg-gray-100 dark:hover:bg-dark-elevated ${
+          value ? 'text-gray-700 dark:text-dark-text' : 'text-gray-400 dark:text-dark-muted italic'
+        }`}
+        title="Double-click to edit"
+      >
+        {value || `Click to add ${label.toLowerCase()}`}
+      </p>
+    );
+  };
+
+  const handleSaveItem = () => {
+    if (!formData.websiteName?.trim()) {
+      showToast('error', 'Website name is required');
+      return;
+    }
+
+    const now = new Date().toISOString();
+
+    if (editingItem) {
+      // Update existing
+      setCatalogItems(prev => prev.map(item =>
+        item.id === editingItem.id
+          ? { ...item, ...formData, updatedAt: now }
+          : item
+      ));
+      showToast('success', 'Catalog item updated');
+    } else {
+      // Create new
+      const newItem: WebsiteCatalogItem = {
+        id: generateId(),
+        websiteName: formData.websiteName || '',
+        businessType: formData.businessType || '',
+        totalPages: formData.totalPages || 1,
+        pageList: formData.pageList || '',
+        designStyle: formData.designStyle || '',
+        primaryColors: formData.primaryColors || '',
+        typography: formData.typography || '',
+        targetAudience: formData.targetAudience || '',
+        keyFeatures: formData.keyFeatures || '',
+        ctas: formData.ctas || '',
+        functionalityNeeds: formData.functionalityNeeds || '',
+        specialNotes: formData.specialNotes || '',
+        linkToSite: formData.linkToSite || '',
+        previewType: formData.previewType || 'iframe',
+        previewImage: formData.previewImage || '',
+        isCompleted: formData.isCompleted || false,
+        isFavorite: formData.isFavorite || false,
+        tasks: formData.tasks || [],
+        promptHistory: formData.promptHistory || [],
+        createdAt: now,
+        updatedAt: now,
+      };
+      setCatalogItems(prev => [newItem, ...prev]);
+      // Add to loading iframes if has URL and preview type is iframe
+      if (newItem.linkToSite && newItem.previewType === 'iframe') {
+        setLoadingIframes(prev => new Set(prev).add(newItem.id));
+      }
+      showToast('success', 'Added to catalog');
+    }
+
+    setShowAddModal(false);
+    setEditingItem(null);
+    setFormData(getEmptyForm());
+  };
+
+  const handleDeleteItem = () => {
+    if (itemToDelete) {
+      setCatalogItems(prev => prev.filter(item => item.id !== itemToDelete.id));
+      showToast('success', 'Item removed from catalog');
+      setShowDeleteConfirm(false);
+      setItemToDelete(null);
+    }
+  };
+
+  const openEditModal = (item: WebsiteCatalogItem) => {
+    setEditingItem(item);
+    setFormData({ ...item });
+    setShowAddModal(true);
+  };
+
+  const clearAllFilters = () => {
+    setSearchQuery('');
+    setBusinessTypeFilter('all');
+    setCompletionFilter('all');
+    setIndustryFilter('all');
+    setColorThemeFilter('all');
+    setDesignStyleFilter('all');
+    setPageCountFilter('all');
+  };
+
+  const hasActiveFilters = searchQuery || businessTypeFilter !== 'all' || completionFilter !== 'all' || industryFilter !== 'all' || colorThemeFilter !== 'all' || designStyleFilter !== 'all' || pageCountFilter !== 'all';
+
+  // Sort options
+  const sortOptions: { value: CatalogSortField; label: string }[] = [
+    { value: 'createdAt', label: 'Date Added' },
+    { value: 'websiteName', label: 'Name' },
+    { value: 'businessType', label: 'Business Type' },
+    { value: 'totalPages', label: 'Page Count' },
+  ];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold-500" />
+      </div>
+    );
+  }
+
+  // Helper to close all dropdowns
+  const closeAllDropdowns = () => {
+    setBusinessTypeDropdownOpen(false);
+    setCompletionDropdownOpen(false);
+    setSortDropdownOpen(false);
+    setIndustryDropdownOpen(false);
+    setColorThemeDropdownOpen(false);
+    setDesignStyleDropdownOpen(false);
+    setPageCountDropdownOpen(false);
+  };
+
+  // Page count options
+  const pageCountOptions: { value: CatalogPageCategory; label: string }[] = [
+    { value: 'all', label: 'All Pages' },
+    { value: 'single-page', label: 'Single Page (1)' },
+    { value: 'standard', label: 'Standard (2-5)' },
+    { value: 'full-featured', label: 'Full Featured (6+)' },
+  ];
+
+  // Count active advanced filters
+  const advancedFilterCount = [industryFilter !== 'all', colorThemeFilter !== 'all', designStyleFilter !== 'all', pageCountFilter !== 'all'].filter(Boolean).length;
+
+  return (
+    <div className="space-y-6">
+      {/* Filter Bar */}
+      <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-4 space-y-4">
+        {/* Primary Filter Row */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Search Input */}
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-muted" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search catalog..."
+              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 bg-white dark:bg-dark-elevated dark:text-dark-text"
+            />
+          </div>
+
+          {/* Business Type Dropdown */}
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                closeAllDropdowns();
+                setBusinessTypeDropdownOpen(!businessTypeDropdownOpen);
+              }}
+              className={`flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition-colors ${
+                businessTypeFilter !== 'all'
+                  ? 'border-gold-400 bg-gold-50 dark:bg-gold-900/20 text-gold-700 dark:text-gold-400'
+                  : 'border-gray-200 dark:border-dark-border bg-white dark:bg-dark-elevated text-gray-700 dark:text-dark-text hover:bg-gray-50 dark:hover:bg-dark-hover'
+              }`}
+            >
+              <Building2 size={14} />
+              {businessTypeFilter === 'all' ? 'Business Type' : businessTypeFilter}
+              <ChevronDown size={14} className={`transition-transform ${businessTypeDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {businessTypeDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 w-56 max-h-64 overflow-y-auto bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg shadow-lg z-20 py-1">
+                <button
+                  onClick={() => {
+                    setBusinessTypeFilter('all');
+                    setBusinessTypeDropdownOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-dark-hover ${businessTypeFilter === 'all' ? 'text-gold-600 font-medium' : 'text-gray-700 dark:text-dark-text'}`}
+                >
+                  All Business Types
+                </button>
+                {uniqueBusinessTypes.map(type => (
+                  <button
+                    key={type}
+                    onClick={() => {
+                      setBusinessTypeFilter(type);
+                      setBusinessTypeDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-dark-hover ${businessTypeFilter === type ? 'text-gold-600 font-medium' : 'text-gray-700 dark:text-dark-text'}`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Completion Status Dropdown */}
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                closeAllDropdowns();
+                setCompletionDropdownOpen(!completionDropdownOpen);
+              }}
+              className={`flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition-colors ${
+                completionFilter !== 'all'
+                  ? 'border-gold-400 bg-gold-50 dark:bg-gold-900/20 text-gold-700 dark:text-gold-400'
+                  : 'border-gray-200 dark:border-dark-border bg-white dark:bg-dark-elevated text-gray-700 dark:text-dark-text hover:bg-gray-50 dark:hover:bg-dark-hover'
+              }`}
+            >
+              <CheckCircle size={14} />
+              {completionFilter === 'all' ? 'Status' : completionFilter === 'completed' ? 'Completed' : 'Not Completed'}
+              <ChevronDown size={14} className={`transition-transform ${completionDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {completionDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 w-40 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg shadow-lg z-20 py-1">
+                {(['all', 'completed', 'not-completed'] as CatalogCompletionStatus[]).map(status => (
+                  <button
+                    key={status}
+                    onClick={() => {
+                      setCompletionFilter(status);
+                      setCompletionDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-dark-hover ${completionFilter === status ? 'text-gold-600 font-medium' : 'text-gray-700 dark:text-dark-text'}`}
+                  >
+                    {status === 'all' ? 'All Status' : status === 'completed' ? 'Completed' : 'Not Completed'}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Sort Dropdown */}
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                closeAllDropdowns();
+                setSortDropdownOpen(!sortDropdownOpen);
+              }}
+              className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-700 dark:text-dark-text hover:bg-gray-50 dark:hover:bg-dark-hover transition-colors"
+            >
+              <ArrowUpDown size={14} />
+              Sort: {sortOptions.find(o => o.value === sortField)?.label}
+              <ChevronDown size={14} className={`transition-transform ${sortDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {sortDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 w-44 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg shadow-lg z-20 py-1">
+                {sortOptions.map(option => (
+                  <button
+                    key={option.value}
+                    onClick={() => {
+                      if (sortField === option.value) {
+                        setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                      } else {
+                        setSortField(option.value);
+                        setSortDirection('desc');
+                      }
+                      setSortDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-dark-hover flex items-center justify-between ${sortField === option.value ? 'text-gold-600 font-medium' : 'text-gray-700 dark:text-dark-text'}`}
+                  >
+                    {option.label}
+                    {sortField === option.value && (
+                      <span className="text-xs text-gray-400">{sortDirection === 'asc' ? 'A-Z' : 'Z-A'}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Clear Filters */}
+          {hasActiveFilters && (
+            <button
+              onClick={clearAllFilters}
+              className="flex items-center gap-1 px-3 py-2 text-sm text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text transition-colors"
+            >
+              <X size={14} />
+              Clear All
+            </button>
+          )}
+
+          {/* Add Button */}
+          <button
+            onClick={() => {
+              setEditingItem(null);
+              setFormData(getEmptyForm());
+              setShowAddModal(true);
+            }}
+            className="ml-auto flex items-center gap-2 bg-gold-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors shadow-sm"
+          >
+            <Plus size={16} />
+            Add to Catalog
+          </button>
+        </div>
+
+        {/* Advanced Filters Row */}
+        <div className="flex items-center gap-3 flex-wrap pt-2 border-t border-gray-100 dark:border-dark-border">
+          <span className="text-xs font-medium text-gray-500 dark:text-dark-muted flex items-center gap-1">
+            <Filter size={12} />
+            Advanced Filters
+            {advancedFilterCount > 0 && (
+              <span className="ml-1 bg-gold-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                {advancedFilterCount}
+              </span>
+            )}
+          </span>
+
+          {/* Industry Dropdown */}
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                closeAllDropdowns();
+                setIndustryDropdownOpen(!industryDropdownOpen);
+              }}
+              className={`flex items-center gap-2 px-3 py-1.5 text-xs border rounded-lg transition-colors ${
+                industryFilter !== 'all'
+                  ? 'border-gold-400 bg-gold-50 dark:bg-gold-900/20 text-gold-700 dark:text-gold-400'
+                  : 'border-gray-200 dark:border-dark-border bg-white dark:bg-dark-elevated text-gray-600 dark:text-dark-muted hover:bg-gray-50 dark:hover:bg-dark-hover'
+              }`}
+            >
+              <Briefcase size={12} />
+              {industryFilter === 'all' ? 'Industry' : CATALOG_INDUSTRY_CATEGORIES.find(c => c.value === industryFilter)?.label}
+              <ChevronDown size={12} className={`transition-transform ${industryDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {industryDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 w-56 max-h-64 overflow-y-auto bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg shadow-lg z-20 py-1">
+                {CATALOG_INDUSTRY_CATEGORIES.map(category => (
+                  <button
+                    key={category.value}
+                    onClick={() => {
+                      setIndustryFilter(category.value);
+                      setIndustryDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-dark-hover ${industryFilter === category.value ? 'text-gold-600 font-medium' : 'text-gray-700 dark:text-dark-text'}`}
+                  >
+                    {category.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Color Theme Dropdown */}
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                closeAllDropdowns();
+                setColorThemeDropdownOpen(!colorThemeDropdownOpen);
+              }}
+              className={`flex items-center gap-2 px-3 py-1.5 text-xs border rounded-lg transition-colors ${
+                colorThemeFilter !== 'all'
+                  ? 'border-gold-400 bg-gold-50 dark:bg-gold-900/20 text-gold-700 dark:text-gold-400'
+                  : 'border-gray-200 dark:border-dark-border bg-white dark:bg-dark-elevated text-gray-600 dark:text-dark-muted hover:bg-gray-50 dark:hover:bg-dark-hover'
+              }`}
+            >
+              <Palette size={12} />
+              {colorThemeFilter === 'all' ? 'Color Theme' : CATALOG_COLOR_THEMES.find(c => c.value === colorThemeFilter)?.label}
+              <ChevronDown size={12} className={`transition-transform ${colorThemeDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {colorThemeDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg shadow-lg z-20 py-1">
+                {CATALOG_COLOR_THEMES.map(theme => (
+                  <button
+                    key={theme.value}
+                    onClick={() => {
+                      setColorThemeFilter(theme.value);
+                      setColorThemeDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-dark-hover ${colorThemeFilter === theme.value ? 'text-gold-600 font-medium' : 'text-gray-700 dark:text-dark-text'}`}
+                  >
+                    {theme.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Design Style Dropdown */}
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                closeAllDropdowns();
+                setDesignStyleDropdownOpen(!designStyleDropdownOpen);
+              }}
+              className={`flex items-center gap-2 px-3 py-1.5 text-xs border rounded-lg transition-colors ${
+                designStyleFilter !== 'all'
+                  ? 'border-gold-400 bg-gold-50 dark:bg-gold-900/20 text-gold-700 dark:text-gold-400'
+                  : 'border-gray-200 dark:border-dark-border bg-white dark:bg-dark-elevated text-gray-600 dark:text-dark-muted hover:bg-gray-50 dark:hover:bg-dark-hover'
+              }`}
+            >
+              <Layers size={12} />
+              {designStyleFilter === 'all' ? 'Design Style' : CATALOG_DESIGN_STYLES.find(c => c.value === designStyleFilter)?.label}
+              <ChevronDown size={12} className={`transition-transform ${designStyleDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {designStyleDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg shadow-lg z-20 py-1">
+                {CATALOG_DESIGN_STYLES.map(style => (
+                  <button
+                    key={style.value}
+                    onClick={() => {
+                      setDesignStyleFilter(style.value);
+                      setDesignStyleDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-dark-hover ${designStyleFilter === style.value ? 'text-gold-600 font-medium' : 'text-gray-700 dark:text-dark-text'}`}
+                  >
+                    {style.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Page Count Dropdown */}
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                closeAllDropdowns();
+                setPageCountDropdownOpen(!pageCountDropdownOpen);
+              }}
+              className={`flex items-center gap-2 px-3 py-1.5 text-xs border rounded-lg transition-colors ${
+                pageCountFilter !== 'all'
+                  ? 'border-gold-400 bg-gold-50 dark:bg-gold-900/20 text-gold-700 dark:text-gold-400'
+                  : 'border-gray-200 dark:border-dark-border bg-white dark:bg-dark-elevated text-gray-600 dark:text-dark-muted hover:bg-gray-50 dark:hover:bg-dark-hover'
+              }`}
+            >
+              <FileText size={12} />
+              {pageCountFilter === 'all' ? 'Page Count' : pageCountOptions.find(o => o.value === pageCountFilter)?.label}
+              <ChevronDown size={12} className={`transition-transform ${pageCountDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {pageCountDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg shadow-lg z-20 py-1">
+                {pageCountOptions.map(option => (
+                  <button
+                    key={option.value}
+                    onClick={() => {
+                      setPageCountFilter(option.value);
+                      setPageCountDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-dark-hover ${pageCountFilter === option.value ? 'text-gold-600 font-medium' : 'text-gray-700 dark:text-dark-text'}`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Active Filter Chips */}
+        {hasActiveFilters && (
+          <div className="flex items-center gap-2 flex-wrap pt-2">
+            <span className="text-xs text-gray-500 dark:text-dark-muted">Active:</span>
+            {searchQuery && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gold-100 dark:bg-gold-900/30 text-gold-700 dark:text-gold-400 rounded-full">
+                Search: "{searchQuery}"
+                <button onClick={() => setSearchQuery('')} className="hover:text-gold-900 dark:hover:text-gold-300">
+                  <X size={10} />
+                </button>
+              </span>
+            )}
+            {businessTypeFilter !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gold-100 dark:bg-gold-900/30 text-gold-700 dark:text-gold-400 rounded-full">
+                {businessTypeFilter}
+                <button onClick={() => setBusinessTypeFilter('all')} className="hover:text-gold-900 dark:hover:text-gold-300">
+                  <X size={10} />
+                </button>
+              </span>
+            )}
+            {completionFilter !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gold-100 dark:bg-gold-900/30 text-gold-700 dark:text-gold-400 rounded-full">
+                {completionFilter === 'completed' ? 'Completed' : 'Not Completed'}
+                <button onClick={() => setCompletionFilter('all')} className="hover:text-gold-900 dark:hover:text-gold-300">
+                  <X size={10} />
+                </button>
+              </span>
+            )}
+            {industryFilter !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gold-100 dark:bg-gold-900/30 text-gold-700 dark:text-gold-400 rounded-full">
+                {CATALOG_INDUSTRY_CATEGORIES.find(c => c.value === industryFilter)?.label}
+                <button onClick={() => setIndustryFilter('all')} className="hover:text-gold-900 dark:hover:text-gold-300">
+                  <X size={10} />
+                </button>
+              </span>
+            )}
+            {colorThemeFilter !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gold-100 dark:bg-gold-900/30 text-gold-700 dark:text-gold-400 rounded-full">
+                {CATALOG_COLOR_THEMES.find(c => c.value === colorThemeFilter)?.label}
+                <button onClick={() => setColorThemeFilter('all')} className="hover:text-gold-900 dark:hover:text-gold-300">
+                  <X size={10} />
+                </button>
+              </span>
+            )}
+            {designStyleFilter !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gold-100 dark:bg-gold-900/30 text-gold-700 dark:text-gold-400 rounded-full">
+                {CATALOG_DESIGN_STYLES.find(c => c.value === designStyleFilter)?.label}
+                <button onClick={() => setDesignStyleFilter('all')} className="hover:text-gold-900 dark:hover:text-gold-300">
+                  <X size={10} />
+                </button>
+              </span>
+            )}
+            {pageCountFilter !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gold-100 dark:bg-gold-900/30 text-gold-700 dark:text-gold-400 rounded-full">
+                {pageCountOptions.find(o => o.value === pageCountFilter)?.label}
+                <button onClick={() => setPageCountFilter('all')} className="hover:text-gold-900 dark:hover:text-gold-300">
+                  <X size={10} />
+                </button>
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Results Count */}
+        <div className="text-xs text-gray-500 dark:text-dark-muted">
+          Showing {filteredAndSortedItems.length} of {catalogItems.length} items
+          {hasActiveFilters && <span className="ml-1 text-gold-600">(filtered)</span>}
+        </div>
+      </div>
+
+      {/* Card Grid */}
+      {filteredAndSortedItems.length === 0 ? (
+        <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-12 text-center">
+          <LayoutGrid size={48} className="mx-auto text-gray-300 dark:text-dark-muted mb-4" />
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-dark-text mb-2">
+            {catalogItems.length === 0 ? 'No items in catalog' : 'No matching items'}
+          </h3>
+          <p className="text-gray-500 dark:text-dark-muted mb-6">
+            {catalogItems.length === 0
+              ? 'Add your first AI-generated website mockup to the catalog.'
+              : 'Try adjusting your filters or search query.'}
+          </p>
+          {catalogItems.length === 0 && (
+            <button
+              onClick={() => {
+                setEditingItem(null);
+                setFormData(getEmptyForm());
+                setShowAddModal(true);
+              }}
+              className="inline-flex items-center gap-2 bg-gold-500 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors"
+            >
+              <Plus size={16} />
+              Add to Catalog
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredAndSortedItems.map((item) => {
+            const isExpanded = expandedCards.has(item.id);
+            const isUnlocked = unlockedCards.has(item.id);
+            const isIframeLoading = loadingIframes.has(item.id);
+
+            return (
+              <div
+                key={item.id}
+                className="group relative rounded-xl overflow-hidden bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-sm transition-all duration-300 hover:shadow-xl hover:border-gray-300 dark:hover:border-gray-600 cursor-pointer"
+                onClick={() => {
+                  setSelectedItem(item);
+                  setDetailIframeLoading(!!item.linkToSite);
+                }}
+              >
+                {/* Top Section: Header */}
+                <div className="p-4 border-b border-gray-100 dark:border-dark-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold text-gray-800 dark:text-dark-text text-base truncate max-w-[200px]" title={item.websiteName}>
+                      {item.websiteName}
+                    </h3>
+                    <span className="text-xs text-gray-500 dark:text-dark-muted flex items-center gap-1">
+                      <FileText size={12} />
+                      {item.totalPages} pages
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {item.businessType && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                        {item.businessType}
+                      </span>
+                    )}
+                    {item.isCompleted && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                        <Check size={10} />
+                        Done
+                      </span>
+                    )}
+                    {item.isFavorite && (
+                      <Star size={14} className="text-amber-500 fill-current" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Middle Section: Preview + Quick Info */}
+                <div className="flex">
+                  {/* Left: Preview (60%) - Laptop aspect ratio 16:10 */}
+                  <div
+                    className="w-[60%] relative bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-900 overflow-hidden"
+                    style={{ aspectRatio: '16/10' }}
+                    onMouseEnter={() => setHoveredPreview(item.id)}
+                    onMouseLeave={() => setHoveredPreview(null)}
+                  >
+                    {/* Image Preview */}
+                    {(item.previewType === 'image' || (!item.previewType && item.previewImage)) && item.previewImage ? (
+                      <>
+                        <img
+                          src={item.previewImage}
+                          alt={item.websiteName}
+                          className="absolute inset-0 w-full h-full object-cover object-top"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                        {/* Image preview indicator */}
+                        <div className="absolute top-2 left-2 px-2 py-1 rounded-lg bg-white/90 dark:bg-dark-card/90 text-gray-600 dark:text-dark-muted text-[10px] font-medium flex items-center gap-1 z-20">
+                          <ImageIcon size={10} />
+                          Screenshot
+                        </div>
+                        {/* External link if available */}
+                        {item.linkToSite && (
+                          <a
+                            href={item.linkToSite}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="absolute top-2 right-2 p-1.5 rounded-lg bg-white/90 dark:bg-dark-card/90 text-gray-600 dark:text-dark-muted hover:bg-white shadow-lg transition-all z-20"
+                            title="Open live site"
+                          >
+                            <ExternalLink size={14} />
+                          </a>
+                        )}
+                      </>
+                    ) : (item.previewType === 'iframe' || !item.previewType) && item.linkToSite ? (
+                      /* iframe Preview */
+                      <>
+                        {/* Loading overlay */}
+                        {isIframeLoading && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 z-10">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gold-500" />
+                          </div>
+                        )}
+
+                        {/* iframe container - 1440x900 scaled to fit laptop preview */}
+                        <div
+                          className="absolute inset-0"
+                          style={{
+                            overflow: isUnlocked ? 'auto' : 'hidden',
+                            pointerEvents: isUnlocked ? 'auto' : 'none',
+                          }}
+                        >
+                          <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                            <iframe
+                              src={item.linkToSite}
+                              title={item.websiteName}
+                              onLoad={() => handleIframeLoad(item.id)}
+                              style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '1440px',
+                                height: '900px',
+                                border: 'none',
+                                transform: 'scale(0.155)',
+                                transformOrigin: 'top left',
+                              }}
+                              sandbox="allow-scripts allow-same-origin"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Live preview indicator */}
+                        <div className="absolute top-2 left-2 px-2 py-1 rounded-lg bg-white/90 dark:bg-dark-card/90 text-gray-600 dark:text-dark-muted text-[10px] font-medium flex items-center gap-1 z-20">
+                          <Globe size={10} />
+                          Live
+                        </div>
+
+                        {/* Lock/Unlock Button */}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleCardLock(item.id); }}
+                          className={`absolute bottom-2 right-2 p-1.5 rounded-lg shadow-lg transition-all z-20 ${
+                            isUnlocked
+                              ? 'bg-gold-500 text-white hover:bg-gold-600'
+                              : 'bg-white/90 dark:bg-dark-card/90 text-gray-600 dark:text-dark-muted hover:bg-white'
+                          }`}
+                          title={isUnlocked ? 'Lock scroll' : 'Unlock scroll'}
+                        >
+                          {isUnlocked ? <Unlock size={14} /> : <Lock size={14} />}
+                        </button>
+
+                        {/* External link button */}
+                        <a
+                          href={item.linkToSite}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute top-2 right-2 p-1.5 rounded-lg bg-white/90 dark:bg-dark-card/90 text-gray-600 dark:text-dark-muted hover:bg-white shadow-lg transition-all z-20"
+                          title="Open in new tab"
+                        >
+                          <ExternalLink size={14} />
+                        </a>
+                      </>
+                    ) : (
+                      /* No Preview - Show add preview prompt */
+                      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
+                        <div className="text-center p-4">
+                          <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                            <Monitor size={24} className="text-gray-400 dark:text-dark-muted" />
+                          </div>
+                          <p className="text-xs font-medium text-gray-500 dark:text-dark-muted mb-1">No preview</p>
+                          <p className="text-[10px] text-gray-400 dark:text-dark-subtle">Hover to add</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Hover Overlay with Quick Actions */}
+                    {hoveredPreview === item.id && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center gap-3 z-30 animate-in fade-in duration-150">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openLinkInput(item.id, e);
+                          }}
+                          className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white/95 dark:bg-dark-card/95 hover:bg-white dark:hover:bg-dark-elevated shadow-lg transition-all transform hover:scale-105"
+                          title="Add live link"
+                        >
+                          <Globe size={20} className="text-gold-500" />
+                          <span className="text-[10px] font-medium text-gray-700 dark:text-dark-text">Live Link</span>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            triggerFileUpload(item.id);
+                          }}
+                          className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white/95 dark:bg-dark-card/95 hover:bg-white dark:hover:bg-dark-elevated shadow-lg transition-all transform hover:scale-105"
+                          title="Upload screenshot"
+                        >
+                          <Upload size={20} className="text-gold-500" />
+                          <span className="text-[10px] font-medium text-gray-700 dark:text-dark-text">Upload Image</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right: Quick Info (40%) */}
+                  <div className="w-[40%] p-3 border-l border-gray-100 dark:border-dark-border">
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-[10px] font-medium text-gray-400 dark:text-dark-muted uppercase tracking-wide">Style</p>
+                        <p className="text-xs text-gray-700 dark:text-dark-text truncate" title={item.designStyle}>{item.designStyle || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-medium text-gray-400 dark:text-dark-muted uppercase tracking-wide">Colors</p>
+                        <p className="text-xs text-gray-700 dark:text-dark-text truncate" title={item.primaryColors}>{item.primaryColors || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-medium text-gray-400 dark:text-dark-muted uppercase tracking-wide">Typography</p>
+                        <p className="text-xs text-gray-700 dark:text-dark-text truncate" title={item.typography}>{item.typography || '-'}</p>
+                      </div>
+                      {item.pageList && (
+                        <div>
+                          <p className="text-[10px] font-medium text-gray-400 dark:text-dark-muted uppercase tracking-wide">Pages</p>
+                          <p className="text-xs text-gray-700 dark:text-dark-text truncate" title={item.pageList}>{item.pageList}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Expandable Details */}
+                {isExpanded && (
+                  <div className="p-4 space-y-3 bg-gray-50 dark:bg-dark-elevated border-t border-gray-100 dark:border-dark-border">
+                    {item.targetAudience && (
+                      <div>
+                        <p className="text-[10px] font-medium text-gray-400 dark:text-dark-muted uppercase mb-1">Target Audience</p>
+                        <p className="text-xs text-gray-600 dark:text-dark-muted">{item.targetAudience}</p>
+                      </div>
+                    )}
+                    {item.keyFeatures && (
+                      <div>
+                        <p className="text-[10px] font-medium text-gray-400 dark:text-dark-muted uppercase mb-1">Key Features</p>
+                        <p className="text-xs text-gray-600 dark:text-dark-muted">{item.keyFeatures}</p>
+                      </div>
+                    )}
+                    {item.ctas && (
+                      <div>
+                        <p className="text-[10px] font-medium text-gray-400 dark:text-dark-muted uppercase mb-1">CTAs</p>
+                        <p className="text-xs text-gray-600 dark:text-dark-muted">{item.ctas}</p>
+                      </div>
+                    )}
+                    {item.functionalityNeeds && (
+                      <div>
+                        <p className="text-[10px] font-medium text-gray-400 dark:text-dark-muted uppercase mb-1">Functionality</p>
+                        <p className="text-xs text-gray-600 dark:text-dark-muted">{item.functionalityNeeds}</p>
+                      </div>
+                    )}
+                    {item.specialNotes && (
+                      <div>
+                        <p className="text-[10px] font-medium text-gray-400 dark:text-dark-muted uppercase mb-1">Notes</p>
+                        <p className="text-xs text-gray-600 dark:text-dark-muted">{item.specialNotes}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Bottom Section: Actions */}
+                <div className="flex items-center justify-between p-3 border-t border-gray-100 dark:border-dark-border" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-3">
+                    {/* Complete Checkbox */}
+                    <label className="flex items-center gap-1.5 cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={item.isCompleted}
+                        onChange={() => toggleComplete(item.id)}
+                        className="w-4 h-4 text-gold-500 border-gray-300 dark:border-dark-border rounded focus:ring-gold-500 cursor-pointer"
+                      />
+                      <span className={`text-xs ${item.isCompleted ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-dark-muted'}`}>
+                        {item.isCompleted ? 'Done' : 'Mark Done'}
+                      </span>
+                    </label>
+
+                    {/* Favorite Star */}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleFavorite(item.id); }}
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        item.isFavorite
+                          ? 'text-amber-500 bg-amber-50 dark:bg-amber-900/30'
+                          : 'text-gray-400 hover:text-amber-500 hover:bg-gray-100 dark:hover:bg-dark-elevated'
+                      }`}
+                      title={item.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                    >
+                      <Star size={16} className={item.isFavorite ? 'fill-current' : ''} />
+                    </button>
+
+                    {/* Edit Button */}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openEditModal(item); }}
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-dark-elevated transition-colors"
+                      title="Edit"
+                    >
+                      <Edit3 size={16} />
+                    </button>
+
+                    {/* Delete Button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setItemToDelete(item);
+                        setShowDeleteConfirm(true);
+                      }}
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+
+                  {/* Expand Button */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleExpand(item.id); }}
+                    className="flex items-center gap-1 text-xs text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text transition-colors"
+                  >
+                    {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    {isExpanded ? 'Less' : 'More'}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Add/Edit Modal */}
+      {showAddModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => {
+            setShowAddModal(false);
+            setEditingItem(null);
+            setFormData(getEmptyForm());
+          }}
+        >
+          <div
+            className="bg-white dark:bg-dark-card rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-dark-border">
+              <h2 className="text-lg font-semibold text-gray-800 dark:text-dark-text">
+                {editingItem ? 'Edit Catalog Item' : 'Add to Catalog'}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  setEditingItem(null);
+                  setFormData(getEmptyForm());
+                }}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors"
+              >
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)] space-y-4">
+              {/* Website Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                  Website Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.websiteName || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, websiteName: e.target.value }))}
+                  placeholder="e.g., Modern Plumbing Co"
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500"
+                />
+              </div>
+
+              {/* Business Type & Total Pages */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                    Business Type
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.businessType || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, businessType: e.target.value }))}
+                    placeholder="e.g., Restaurant, Plumbing"
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                    Total Pages
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={formData.totalPages || 1}
+                    onChange={(e) => setFormData(prev => ({ ...prev, totalPages: parseInt(e.target.value) || 1 }))}
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  />
+                </div>
+              </div>
+
+              {/* Page List */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                  Page List
+                </label>
+                <input
+                  type="text"
+                  value={formData.pageList || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, pageList: e.target.value }))}
+                  placeholder="e.g., Home, About, Services, Contact"
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500"
+                />
+              </div>
+
+              {/* Preview Settings */}
+              <div className="p-4 bg-gray-50 dark:bg-dark-elevated rounded-lg space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-2">
+                    Preview Type
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, previewType: 'iframe' }))}
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                        formData.previewType === 'iframe' || !formData.previewType
+                          ? 'border-gold-500 bg-gold-50 dark:bg-gold-900/20 text-gold-700 dark:text-gold-400'
+                          : 'border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card text-gray-600 dark:text-dark-muted hover:bg-gray-50 dark:hover:bg-dark-hover'
+                      }`}
+                    >
+                      <Globe size={16} />
+                      Live Link
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, previewType: 'image' }))}
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                        formData.previewType === 'image'
+                          ? 'border-gold-500 bg-gold-50 dark:bg-gold-900/20 text-gold-700 dark:text-gold-400'
+                          : 'border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card text-gray-600 dark:text-dark-muted hover:bg-gray-50 dark:hover:bg-dark-hover'
+                      }`}
+                    >
+                      <ImageIcon size={16} />
+                      Screenshot
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, previewType: 'none' }))}
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                        formData.previewType === 'none'
+                          ? 'border-gold-500 bg-gold-50 dark:bg-gold-900/20 text-gold-700 dark:text-gold-400'
+                          : 'border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card text-gray-600 dark:text-dark-muted hover:bg-gray-50 dark:hover:bg-dark-hover'
+                      }`}
+                    >
+                      <Monitor size={16} />
+                      None
+                    </button>
+                  </div>
+                </div>
+
+                {/* Live Link URL */}
+                {(formData.previewType === 'iframe' || !formData.previewType) && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                      Website URL
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.linkToSite || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, linkToSite: e.target.value }))}
+                      placeholder="https://example.com"
+                      className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500"
+                    />
+                    <p className="mt-1 text-xs text-gray-500 dark:text-dark-muted">
+                      The website will be displayed as a live iframe preview
+                    </p>
+                  </div>
+                )}
+
+                {/* Image URL or Upload */}
+                {formData.previewType === 'image' && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                        Screenshot URL or Base64
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.previewImage || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, previewImage: e.target.value }))}
+                        placeholder="https://example.com/screenshot.png or paste base64 data"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500"
+                      />
+                    </div>
+
+                    <div className="text-center">
+                      <span className="text-xs text-gray-400 dark:text-dark-muted">or</span>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                        Upload Screenshot
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <label className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 dark:border-dark-border rounded-lg cursor-pointer hover:border-gold-500 transition-colors">
+                          <Upload size={18} className="text-gray-400" />
+                          <span className="text-sm text-gray-600 dark:text-dark-muted">
+                            {formData.previewImage && formData.previewImage.startsWith('data:') ? 'Image uploaded' : 'Choose file'}
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (event) => {
+                                  const base64 = event.target?.result as string;
+                                  setFormData(prev => ({ ...prev, previewImage: base64 }));
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </label>
+                        {formData.previewImage && (
+                          <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({ ...prev, previewImage: '' }))}
+                            className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                            title="Remove image"
+                          >
+                            <X size={18} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Preview of uploaded image */}
+                    {formData.previewImage && (
+                      <div className="mt-3">
+                        <p className="text-xs font-medium text-gray-500 dark:text-dark-muted mb-2">Preview:</p>
+                        <div className="relative w-full h-32 rounded-lg overflow-hidden bg-gray-100 dark:bg-dark-card">
+                          <img
+                            src={formData.previewImage}
+                            alt="Preview"
+                            className="w-full h-full object-cover object-top"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Optional: Still allow a link to the live site */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                        Live Site URL (optional)
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.linkToSite || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, linkToSite: e.target.value }))}
+                        placeholder="https://example.com"
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500"
+                      />
+                      <p className="mt-1 text-xs text-gray-500 dark:text-dark-muted">
+                        If provided, clicking the preview will open this link
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Design Style & Typography */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                    Design Style
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.designStyle || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, designStyle: e.target.value }))}
+                    placeholder="e.g., Modern, Minimal, Bold"
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                    Typography
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.typography || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, typography: e.target.value }))}
+                    placeholder="e.g., Inter, Roboto, Poppins"
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  />
+                </div>
+              </div>
+
+              {/* Primary Colors */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                  Primary Colors
+                </label>
+                <input
+                  type="text"
+                  value={formData.primaryColors || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, primaryColors: e.target.value }))}
+                  placeholder="e.g., #2563EB, #10B981, Navy Blue"
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500"
+                />
+              </div>
+
+              {/* Target Audience */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                  Target Audience
+                </label>
+                <input
+                  type="text"
+                  value={formData.targetAudience || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, targetAudience: e.target.value }))}
+                  placeholder="e.g., Homeowners aged 30-55"
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500"
+                />
+              </div>
+
+              {/* Key Features */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                  Key Features
+                </label>
+                <textarea
+                  value={formData.keyFeatures || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, keyFeatures: e.target.value }))}
+                  placeholder="e.g., Service booking, testimonials carousel, contact form"
+                  rows={2}
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500 resize-none"
+                />
+              </div>
+
+              {/* CTAs */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                  CTAs (Call to Actions)
+                </label>
+                <input
+                  type="text"
+                  value={formData.ctas || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, ctas: e.target.value }))}
+                  placeholder="e.g., Get a Free Quote, Book Now, Contact Us"
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500"
+                />
+              </div>
+
+              {/* Functionality Needs */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                  Functionality Needs
+                </label>
+                <textarea
+                  value={formData.functionalityNeeds || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, functionalityNeeds: e.target.value }))}
+                  placeholder="e.g., Online booking system, payment integration"
+                  rows={2}
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500 resize-none"
+                />
+              </div>
+
+              {/* Special Notes */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                  Special Notes
+                </label>
+                <textarea
+                  value={formData.specialNotes || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, specialNotes: e.target.value }))}
+                  placeholder="Any additional notes or requirements..."
+                  rows={3}
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-500 resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-elevated">
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  setEditingItem(null);
+                  setFormData(getEmptyForm());
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveItem}
+                className="px-5 py-2 text-sm font-medium bg-gold-500 text-white rounded-lg hover:bg-gold-600 transition-colors"
+              >
+                {editingItem ? 'Save Changes' : 'Add to Catalog'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal - Full Screen */}
+      {selectedItem && (
+        <div
+          className="fixed inset-0 bg-gray-50 dark:bg-dark-bg z-50 flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
+            {/* Modal Header - Compact */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setSelectedItem(null)}
+                  className="p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors"
+                  title="Back to catalog"
+                >
+                  <ArrowLeft size={20} className="text-gray-500 dark:text-dark-muted" />
+                </button>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    {editingField === 'websiteName' ? (
+                      <input
+                        type="text"
+                        value={editingValue}
+                        onChange={(e) => setEditingValue(e.target.value)}
+                        onBlur={saveInlineEdit}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveInlineEdit();
+                          if (e.key === 'Escape') cancelInlineEdit();
+                        }}
+                        autoFocus
+                        className="text-lg font-semibold px-2 py-0.5 border border-gold-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 bg-white dark:bg-dark-elevated dark:text-dark-text min-w-[300px]"
+                      />
+                    ) : (
+                      <h2
+                        onDoubleClick={() => startEditing('websiteName', selectedItem.websiteName)}
+                        className="text-lg font-semibold text-gray-800 dark:text-dark-text cursor-pointer hover:bg-gray-100 dark:hover:bg-dark-hover rounded px-1 -mx-1 transition-colors"
+                        title="Double-click to edit"
+                      >
+                        {selectedItem.websiteName}
+                      </h2>
+                    )}
+                    {selectedItem.isFavorite && (
+                      <Star size={16} className="text-amber-500 fill-current flex-shrink-0" />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {editingField === 'businessType' ? (
+                      <input
+                        type="text"
+                        value={editingValue}
+                        onChange={(e) => setEditingValue(e.target.value)}
+                        onBlur={saveInlineEdit}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveInlineEdit();
+                          if (e.key === 'Escape') cancelInlineEdit();
+                        }}
+                        autoFocus
+                        className="text-sm px-2 py-0.5 border border-gold-400 rounded focus:outline-none focus:ring-2 focus:ring-gold-400 bg-white dark:bg-dark-elevated dark:text-dark-text"
+                      />
+                    ) : (
+                      <span
+                        onDoubleClick={() => startEditing('businessType', selectedItem.businessType)}
+                        className="text-sm text-gray-500 dark:text-dark-muted cursor-pointer hover:bg-gray-100 dark:hover:bg-dark-hover rounded px-1 -mx-1 transition-colors"
+                        title="Double-click to edit"
+                      >
+                        {selectedItem.businessType || 'Add business type'}
+                      </span>
+                    )}
+                    <span className="text-gray-300 dark:text-dark-border">•</span>
+                    <span className="text-sm text-gray-500 dark:text-dark-muted">
+                      {selectedItem.totalPages} pages
+                    </span>
+                    {selectedItem.isCompleted && (
+                      <>
+                        <span className="text-gray-300 dark:text-dark-border">•</span>
+                        <span className="inline-flex items-center gap-1 text-sm text-green-600 dark:text-green-400">
+                          <Check size={14} />
+                          Completed
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                {/* Prompt History Button */}
+                <button
+                  onClick={() => setShowPromptHistory(true)}
+                  className={`p-2 rounded-lg transition-colors flex items-center gap-1.5 ${
+                    (selectedItem.promptHistory?.length || 0) > 0
+                      ? 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50'
+                      : 'text-gray-400 hover:text-purple-600 hover:bg-gray-100 dark:hover:bg-dark-elevated'
+                  }`}
+                  title="View prompt history"
+                >
+                  <History size={18} />
+                  {(selectedItem.promptHistory?.length || 0) > 0 && (
+                    <span className="text-xs font-medium">{selectedItem.promptHistory?.length}</span>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    toggleFavorite(selectedItem.id);
+                    setSelectedItem({ ...selectedItem, isFavorite: !selectedItem.isFavorite });
+                  }}
+                  className={`p-2 rounded-lg transition-colors ${
+                    selectedItem.isFavorite
+                      ? 'text-amber-500 bg-amber-50 dark:bg-amber-900/30'
+                      : 'text-gray-400 hover:text-amber-500 hover:bg-gray-100 dark:hover:bg-dark-elevated'
+                  }`}
+                  title={selectedItem.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                >
+                  <Star size={18} className={selectedItem.isFavorite ? 'fill-current' : ''} />
+                </button>
+                <button
+                  onClick={() => {
+                    openEditModal(selectedItem);
+                    setSelectedItem(null);
+                  }}
+                  className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-dark-elevated transition-colors"
+                  title="Edit"
+                >
+                  <Edit3 size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body - Clean Grid Layout */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="max-w-7xl mx-auto p-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                  {/* Left Column: Preview (smaller, contained) */}
+                  <div className="lg:col-span-1">
+                    <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border overflow-hidden">
+                      <div className="px-4 py-3 border-b border-gray-100 dark:border-dark-border">
+                        <h3 className="text-sm font-medium text-gray-700 dark:text-dark-text flex items-center gap-2">
+                          <Monitor size={14} />
+                          Preview
+                        </h3>
+                      </div>
+                      <div className="p-4">
+                        <div className="relative bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-lg overflow-hidden" style={{ aspectRatio: '4/3' }}>
+                          {/* Image Preview */}
+                          {(selectedItem.previewType === 'image' || (!selectedItem.previewType && selectedItem.previewImage)) && selectedItem.previewImage ? (
+                            <>
+                              <img
+                                src={selectedItem.previewImage}
+                                alt={selectedItem.websiteName}
+                                className="absolute inset-0 w-full h-full object-cover object-top"
+                              />
+                              {/* Image badge */}
+                              <div className="absolute top-2 left-2 px-2 py-1 rounded-lg bg-white/90 dark:bg-dark-card/90 text-gray-600 dark:text-dark-muted text-xs font-medium flex items-center gap-1 z-20">
+                                <ImageIcon size={12} />
+                                Screenshot
+                              </div>
+                            </>
+                          ) : (selectedItem.previewType === 'iframe' || !selectedItem.previewType) && selectedItem.linkToSite ? (
+                            /* iframe Preview */
+                            <>
+                              {detailIframeLoading && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 z-10">
+                                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gold-500" />
+                                </div>
+                              )}
+                              <iframe
+                                src={selectedItem.linkToSite}
+                                title={selectedItem.websiteName}
+                                onLoad={() => setDetailIframeLoading(false)}
+                                className="absolute inset-0 w-full h-full border-0"
+                                style={{
+                                  width: '400%',
+                                  height: '400%',
+                                  transform: 'scale(0.25)',
+                                  transformOrigin: 'top left',
+                                }}
+                                sandbox="allow-scripts allow-same-origin"
+                              />
+                              {/* Live badge */}
+                              <div className="absolute top-2 left-2 px-2 py-1 rounded-lg bg-white/90 dark:bg-dark-card/90 text-gray-600 dark:text-dark-muted text-xs font-medium flex items-center gap-1 z-20">
+                                <Globe size={12} />
+                                Live
+                              </div>
+                            </>
+                          ) : (
+                            /* No Preview */
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="text-center">
+                                <Monitor size={32} className="mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+                                <p className="text-xs text-gray-400 dark:text-dark-muted">No preview</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        {selectedItem.linkToSite && (
+                          <a
+                            href={selectedItem.linkToSite}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 dark:text-dark-text bg-gray-100 dark:bg-dark-elevated hover:bg-gray-200 dark:hover:bg-dark-hover rounded-lg transition-colors"
+                          >
+                            <ExternalLink size={14} />
+                            Open in new tab
+                          </a>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Quick Info Card */}
+                    <div className="mt-4 bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border overflow-hidden">
+                      <div className="px-4 py-3 border-b border-gray-100 dark:border-dark-border">
+                        <h3 className="text-sm font-medium text-gray-700 dark:text-dark-text flex items-center gap-2">
+                          <Layers size={14} />
+                          Pages ({selectedItem.totalPages})
+                        </h3>
+                      </div>
+                      <div className="p-4">
+                        {editingField === 'pageList' ? (
+                          <input
+                            type="text"
+                            value={editingValue}
+                            onChange={(e) => setEditingValue(e.target.value)}
+                            onBlur={saveInlineEdit}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveInlineEdit();
+                              if (e.key === 'Escape') cancelInlineEdit();
+                            }}
+                            autoFocus
+                            placeholder="Home, About, Services, Contact"
+                            className="w-full px-2 py-1 text-sm border border-gold-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 bg-white dark:bg-dark-elevated dark:text-dark-text"
+                          />
+                        ) : (
+                          <div
+                            onDoubleClick={() => startEditing('pageList', selectedItem.pageList)}
+                            className="cursor-pointer rounded px-1 -mx-1 transition-colors hover:bg-gray-50 dark:hover:bg-dark-elevated"
+                            title="Double-click to edit"
+                          >
+                            {selectedItem.pageList ? (
+                              <div className="flex flex-wrap gap-1.5">
+                                {selectedItem.pageList.split(',').map((page, i) => (
+                                  <span key={i} className="px-2 py-1 bg-gray-100 dark:bg-dark-elevated rounded text-xs text-gray-600 dark:text-dark-text">
+                                    {page.trim()}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-400 dark:text-dark-muted italic">Click to add pages...</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Link to Site Card */}
+                    <div className="mt-4 bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border overflow-hidden">
+                      <div className="px-4 py-3 border-b border-gray-100 dark:border-dark-border">
+                        <h3 className="text-sm font-medium text-gray-700 dark:text-dark-text flex items-center gap-2">
+                          <Globe size={14} />
+                          Preview URL
+                        </h3>
+                      </div>
+                      <div className="p-4">
+                        {editingField === 'linkToSite' ? (
+                          <input
+                            type="url"
+                            value={editingValue}
+                            onChange={(e) => setEditingValue(e.target.value)}
+                            onBlur={saveInlineEdit}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveInlineEdit();
+                              if (e.key === 'Escape') cancelInlineEdit();
+                            }}
+                            autoFocus
+                            placeholder="https://example.com"
+                            className="w-full px-2 py-1 text-sm border border-gold-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 bg-white dark:bg-dark-elevated dark:text-dark-text"
+                          />
+                        ) : (
+                          <p
+                            onDoubleClick={() => startEditing('linkToSite', selectedItem.linkToSite)}
+                            className={`text-sm cursor-pointer rounded px-1 -mx-1 transition-colors hover:bg-gray-100 dark:hover:bg-dark-elevated truncate ${
+                              selectedItem.linkToSite ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-dark-muted italic'
+                            }`}
+                            title="Double-click to edit"
+                          >
+                            {selectedItem.linkToSite || 'Click to add URL...'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Middle Column: Design Details */}
+                  <div className="lg:col-span-1">
+                    <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border overflow-hidden">
+                      <div className="px-4 py-3 border-b border-gray-100 dark:border-dark-border">
+                        <h3 className="text-sm font-medium text-gray-700 dark:text-dark-text flex items-center gap-2">
+                          <Palette size={14} />
+                          Design Details
+                          <span className="text-xs font-normal text-gray-400 dark:text-dark-muted">(double-click to edit)</span>
+                        </h3>
+                      </div>
+                      <div className="p-4 space-y-4">
+                        <div>
+                          <p className="text-xs font-medium text-gray-400 dark:text-dark-muted uppercase tracking-wide mb-1">Style</p>
+                          <EditableField field="designStyle" value={selectedItem.designStyle} label="Style" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-400 dark:text-dark-muted uppercase tracking-wide mb-1">Colors</p>
+                          <EditableField field="primaryColors" value={selectedItem.primaryColors} label="Colors" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-400 dark:text-dark-muted uppercase tracking-wide mb-1">Typography</p>
+                          <EditableField field="typography" value={selectedItem.typography} label="Typography" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-400 dark:text-dark-muted uppercase tracking-wide mb-1">Target Audience</p>
+                          <EditableField field="targetAudience" value={selectedItem.targetAudience} label="Target Audience" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Features & CTAs */}
+                    <div className="mt-4 bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border overflow-hidden">
+                      <div className="px-4 py-3 border-b border-gray-100 dark:border-dark-border">
+                        <h3 className="text-sm font-medium text-gray-700 dark:text-dark-text flex items-center gap-2">
+                          <Zap size={14} />
+                          Features & CTAs
+                        </h3>
+                      </div>
+                      <div className="p-4 space-y-4">
+                        <div>
+                          <p className="text-xs font-medium text-gray-400 dark:text-dark-muted uppercase tracking-wide mb-1">Key Features</p>
+                          <EditableField field="keyFeatures" value={selectedItem.keyFeatures} label="Key Features" multiline />
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-400 dark:text-dark-muted uppercase tracking-wide mb-1">Call to Actions</p>
+                          <EditableField field="ctas" value={selectedItem.ctas} label="CTAs" placeholder="e.g., Get Started, Learn More, Contact Us" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-400 dark:text-dark-muted uppercase tracking-wide mb-1">Functionality</p>
+                          <EditableField field="functionalityNeeds" value={selectedItem.functionalityNeeds} label="Functionality" multiline />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Special Notes */}
+                    <div className="mt-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800 overflow-hidden">
+                      <div className="px-4 py-3 border-b border-amber-200 dark:border-amber-800">
+                        <h3 className="text-sm font-medium text-amber-700 dark:text-amber-400 flex items-center gap-2">
+                          <FileText size={14} />
+                          Notes
+                        </h3>
+                      </div>
+                      <div className="p-4">
+                        {editingField === 'specialNotes' ? (
+                          <textarea
+                            value={editingValue}
+                            onChange={(e) => setEditingValue(e.target.value)}
+                            onBlur={saveInlineEdit}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Escape') cancelInlineEdit();
+                            }}
+                            autoFocus
+                            placeholder="Add notes..."
+                            className="w-full px-2 py-1.5 text-sm border border-amber-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white dark:bg-dark-elevated dark:text-dark-text resize-none min-h-[80px]"
+                            rows={4}
+                          />
+                        ) : (
+                          <p
+                            onDoubleClick={() => startEditing('specialNotes', selectedItem.specialNotes)}
+                            className={`text-sm cursor-pointer rounded px-1 -mx-1 transition-colors hover:bg-amber-100 dark:hover:bg-amber-900/40 ${
+                              selectedItem.specialNotes ? 'text-amber-800 dark:text-amber-300' : 'text-amber-600/60 dark:text-amber-400/60 italic'
+                            }`}
+                            title="Double-click to edit"
+                          >
+                            {selectedItem.specialNotes || 'Click to add notes...'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Tasks */}
+                  <div className="lg:col-span-1">
+                    <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border overflow-hidden sticky top-6">
+                      <div className="px-4 py-3 border-b border-gray-100 dark:border-dark-border flex items-center justify-between">
+                        <h3 className="text-sm font-medium text-gray-700 dark:text-dark-text flex items-center gap-2">
+                          <CheckSquare size={14} />
+                          Tasks
+                          {selectedItem.tasks && selectedItem.tasks.length > 0 && (
+                            <span className="text-xs font-normal text-gray-400 dark:text-dark-muted">
+                              {selectedItem.tasks.filter(t => t.completed).length}/{selectedItem.tasks.length}
+                            </span>
+                          )}
+                        </h3>
+                        {selectedItem.tasks && selectedItem.tasks.length > 0 && (
+                          <span className="text-xs font-medium text-gold-600 dark:text-gold-400">
+                            {Math.round((selectedItem.tasks.filter(t => t.completed).length / selectedItem.tasks.length) * 100)}%
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Progress bar */}
+                      {selectedItem.tasks && selectedItem.tasks.length > 0 && (
+                        <div className="h-1 bg-gray-100 dark:bg-dark-border">
+                          <div
+                            className="h-full bg-gradient-to-r from-gold-400 to-gold-500 transition-all duration-300"
+                            style={{ width: `${(selectedItem.tasks.filter(t => t.completed).length / selectedItem.tasks.length) * 100}%` }}
+                          />
+                        </div>
+                      )}
+
+                      <div className="p-4">
+                        {/* Add task input */}
+                        <div className="flex gap-2 mb-4">
+                          <input
+                            type="text"
+                            value={newTaskTitle}
+                            onChange={(e) => setNewTaskTitle(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && newTaskTitle.trim()) {
+                                addTask(selectedItem.id, newTaskTitle);
+                                setNewTaskTitle('');
+                              }
+                            }}
+                            placeholder="Add a task..."
+                            className="flex-1 px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 bg-white dark:bg-dark-elevated dark:text-dark-text placeholder-gray-400"
+                          />
+                          <button
+                            onClick={() => {
+                              if (newTaskTitle.trim()) {
+                                addTask(selectedItem.id, newTaskTitle);
+                                setNewTaskTitle('');
+                              }
+                            }}
+                            disabled={!newTaskTitle.trim()}
+                            className="px-3 py-2 bg-gold-500 text-white rounded-lg hover:bg-gold-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            <Plus size={18} />
+                          </button>
+                        </div>
+
+                        {/* Tasks list */}
+                        {selectedItem.tasks && selectedItem.tasks.length > 0 ? (
+                          <div className="space-y-2 max-h-80 overflow-y-auto">
+                            {selectedItem.tasks.map((task) => (
+                              <div
+                                key={task.id}
+                                className={`group flex items-start gap-3 p-2.5 rounded-lg transition-colors ${
+                                  task.completed
+                                    ? 'bg-green-50 dark:bg-green-900/20'
+                                    : 'hover:bg-gray-50 dark:hover:bg-dark-elevated'
+                                }`}
+                              >
+                                <button
+                                  onClick={() => toggleTask(selectedItem.id, task.id)}
+                                  className={`flex-shrink-0 w-5 h-5 mt-0.5 rounded border-2 flex items-center justify-center transition-colors ${
+                                    task.completed
+                                      ? 'bg-green-500 border-green-500 text-white'
+                                      : 'border-gray-300 dark:border-dark-border hover:border-gold-500'
+                                  }`}
+                                >
+                                  {task.completed && <Check size={12} />}
+                                </button>
+                                <span className={`flex-1 text-sm leading-relaxed ${
+                                  task.completed
+                                    ? 'text-gray-400 dark:text-dark-muted line-through'
+                                    : 'text-gray-700 dark:text-dark-text'
+                                }`}>
+                                  {task.title}
+                                </span>
+                                <button
+                                  onClick={() => deleteTask(selectedItem.id, task.id)}
+                                  className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 rounded transition-all"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-gray-400 dark:text-dark-muted">
+                            <CheckSquare size={24} className="mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No tasks yet</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Mark Complete Card */}
+                    <div className="mt-4 bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-4">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedItem.isCompleted}
+                          onChange={() => {
+                            toggleComplete(selectedItem.id);
+                            setSelectedItem({ ...selectedItem, isCompleted: !selectedItem.isCompleted });
+                          }}
+                          className="w-5 h-5 text-green-500 border-gray-300 dark:border-dark-border rounded focus:ring-green-500 cursor-pointer"
+                        />
+                        <div>
+                          <p className={`text-sm font-medium ${selectedItem.isCompleted ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-dark-text'}`}>
+                            {selectedItem.isCompleted ? 'Completed' : 'Mark as complete'}
+                          </p>
+                          <p className="text-xs text-gray-400 dark:text-dark-muted">
+                            {selectedItem.isCompleted ? 'This mockup is finished' : 'Check when mockup is ready'}
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Prompt History Slide-in Panel */}
+            {showPromptHistory && (
+              <>
+                {/* Backdrop */}
+                <div
+                  className="fixed inset-0 bg-black/30 z-50"
+                  onClick={() => {
+                    setShowPromptHistory(false);
+                    setEditingPromptId(null);
+                  }}
+                />
+
+                {/* Slide-in Panel from Right */}
+                <div
+                  className="fixed inset-y-0 right-0 w-full max-w-xl bg-white dark:bg-dark-card shadow-2xl z-50 flex flex-col"
+                  style={{
+                    animation: 'slideInRight 0.3s ease-out forwards',
+                  }}
+                >
+                  {/* Panel Header */}
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-dark-border bg-gradient-to-r from-purple-50 to-white dark:from-purple-900/20 dark:to-dark-card">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-900/30">
+                        <History size={20} className="text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-semibold text-gray-800 dark:text-dark-text">Prompt History</h2>
+                        <p className="text-xs text-gray-500 dark:text-dark-muted">
+                          {(selectedItem.promptHistory?.length || 0)} prompt{(selectedItem.promptHistory?.length || 0) !== 1 ? 's' : ''} saved
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setShowPromptHistory(false);
+                        setEditingPromptId(null);
+                      }}
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors"
+                    >
+                      <X size={20} className="text-gray-500" />
+                    </button>
+                  </div>
+
+                  {/* Panel Body - Scrollable */}
+                  <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                    {/* Add New Prompt Section */}
+                    <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
+                      <h3 className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-3 flex items-center gap-2">
+                        <Plus size={16} />
+                        Add New Prompt
+                      </h3>
+                      <div className="space-y-3">
+                        <input
+                          type="text"
+                          value={newPromptTitle}
+                          onChange={(e) => setNewPromptTitle(e.target.value)}
+                          placeholder={`Prompt ${(selectedItem.promptHistory?.length || 0) + 1} - Give it a title...`}
+                          className="w-full px-3 py-2 text-sm border border-purple-200 dark:border-purple-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white dark:bg-dark-elevated dark:text-dark-text"
+                        />
+                        <textarea
+                          value={newPromptText}
+                          onChange={(e) => setNewPromptText(e.target.value)}
+                          placeholder="Enter your prompt text here..."
+                          rows={4}
+                          className="w-full px-3 py-2 text-sm border border-purple-200 dark:border-purple-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white dark:bg-dark-elevated dark:text-dark-text resize-none"
+                        />
+                        <button
+                          onClick={() => addPrompt(selectedItem.id)}
+                          disabled={!newPromptTitle.trim() || !newPromptText.trim()}
+                          className="w-full px-4 py-2 text-sm font-medium bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Plus size={16} />
+                          Add to History
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Prompt History List - FAQ Style */}
+                    {selectedItem.promptHistory && selectedItem.promptHistory.length > 0 ? (
+                      <div className="space-y-3">
+                        {selectedItem.promptHistory.map((prompt, index) => {
+                          const isExpanded = expandedPrompts.has(prompt.id);
+                          const isEditingThis = editingPromptId === prompt.id;
+
+                          return (
+                            <div
+                              key={prompt.id}
+                              className={`rounded-xl border transition-all ${
+                                isExpanded
+                                  ? 'border-purple-300 dark:border-purple-700 bg-white dark:bg-dark-elevated shadow-md'
+                                  : 'border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card hover:border-purple-200 dark:hover:border-purple-800'
+                              }`}
+                            >
+                              {/* Accordion Header */}
+                              <button
+                                onClick={() => togglePromptExpand(prompt.id)}
+                                className="w-full flex items-center justify-between p-4 text-left"
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm font-semibold ${
+                                    isExpanded
+                                      ? 'bg-purple-500 text-white'
+                                      : 'bg-gray-100 dark:bg-dark-elevated text-gray-500 dark:text-dark-muted'
+                                  }`}>
+                                    {index + 1}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <h4 className="font-medium text-gray-800 dark:text-dark-text truncate">
+                                      {prompt.title}
+                                    </h4>
+                                    <p className="text-xs text-gray-400 dark:text-dark-muted">
+                                      {new Date(prompt.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    </p>
+                                  </div>
+                                </div>
+                                <ChevronDown
+                                  size={18}
+                                  className={`flex-shrink-0 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                                />
+                              </button>
+
+                              {/* Accordion Content */}
+                              {isExpanded && (
+                                <div className="px-4 pb-4 border-t border-gray-100 dark:border-dark-border">
+                                  {isEditingThis ? (
+                                    // Edit Mode
+                                    <div className="pt-4 space-y-3">
+                                      <input
+                                        type="text"
+                                        value={editingPromptTitle}
+                                        onChange={(e) => setEditingPromptTitle(e.target.value)}
+                                        className="w-full px-3 py-2 text-sm border border-purple-300 dark:border-purple-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white dark:bg-dark-elevated dark:text-dark-text"
+                                      />
+                                      <textarea
+                                        value={editingPromptText}
+                                        onChange={(e) => setEditingPromptText(e.target.value)}
+                                        rows={6}
+                                        className="w-full px-3 py-2 text-sm border border-purple-300 dark:border-purple-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white dark:bg-dark-elevated dark:text-dark-text resize-none"
+                                      />
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          onClick={() => savePromptEdit(selectedItem.id)}
+                                          className="flex-1 px-3 py-2 text-sm font-medium bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                                        >
+                                          Save Changes
+                                        </button>
+                                        <button
+                                          onClick={cancelPromptEdit}
+                                          className="px-3 py-2 text-sm font-medium text-gray-600 dark:text-dark-text bg-gray-100 dark:bg-dark-elevated hover:bg-gray-200 dark:hover:bg-dark-hover rounded-lg transition-colors"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    // View Mode
+                                    <div className="pt-4">
+                                      <div className="bg-gray-50 dark:bg-dark-bg rounded-lg p-4 mb-3">
+                                        <p className="text-sm text-gray-700 dark:text-dark-text whitespace-pre-wrap leading-relaxed">
+                                          {prompt.prompt}
+                                        </p>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          onClick={() => copyPromptToClipboard(prompt.prompt)}
+                                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 rounded-lg transition-colors"
+                                        >
+                                          <Copy size={14} />
+                                          Copy
+                                        </button>
+                                        <button
+                                          onClick={() => startEditingPrompt(prompt)}
+                                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-dark-text bg-gray-100 dark:bg-dark-elevated hover:bg-gray-200 dark:hover:bg-dark-hover rounded-lg transition-colors"
+                                        >
+                                          <Edit3 size={14} />
+                                          Edit
+                                        </button>
+                                        <button
+                                          onClick={() => deletePrompt(selectedItem.id, prompt.id)}
+                                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg transition-colors"
+                                        >
+                                          <Trash2 size={14} />
+                                          Delete
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-dark-elevated flex items-center justify-center">
+                          <History size={32} className="text-gray-300 dark:text-gray-600" />
+                        </div>
+                        <h3 className="text-sm font-medium text-gray-600 dark:text-dark-text mb-1">No prompts yet</h3>
+                        <p className="text-xs text-gray-400 dark:text-dark-muted max-w-xs mx-auto">
+                          Add your first prompt above to start tracking your AI generation history
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+        </div>
+      )}
+
+      {/* Hidden File Input for Quick Image Upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file && uploadTargetId) {
+            handleQuickImageUpload(uploadTargetId, file);
+            setUploadTargetId(null);
+          }
+          e.target.value = '';
+        }}
+      />
+
+      {/* Quick Link Input Modal */}
+      {showLinkInput && linkInputTargetId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-dark-card rounded-xl shadow-2xl w-full max-w-md animate-in zoom-in-95 duration-200">
+            <div className="p-4 border-b border-gray-100 dark:border-dark-border">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-dark-text flex items-center gap-2">
+                <Globe size={20} className="text-gold-500" />
+                Add Live Link
+              </h3>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-600 dark:text-dark-muted mb-1.5">
+                  Website URL
+                </label>
+                <input
+                  type="url"
+                  value={tempLinkValue}
+                  onChange={(e) => setTempLinkValue(e.target.value)}
+                  placeholder="https://example.com"
+                  className="w-full px-4 py-2.5 border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 bg-white dark:bg-dark-elevated dark:text-dark-text"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && tempLinkValue.trim()) {
+                      handleQuickLinkSave(linkInputTargetId, tempLinkValue);
+                    } else if (e.key === 'Escape') {
+                      setShowLinkInput(false);
+                      setLinkInputTargetId(null);
+                      setTempLinkValue('');
+                    }
+                  }}
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowLinkInput(false);
+                    setLinkInputTargetId(null);
+                    setTempLinkValue('');
+                  }}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-600 dark:text-dark-text bg-gray-100 dark:bg-dark-elevated hover:bg-gray-200 dark:hover:bg-dark-hover rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleQuickLinkSave(linkInputTargetId, tempLinkValue)}
+                  disabled={!tempLinkValue.trim()}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gold-500 hover:bg-gold-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Save Link
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete Catalog Item"
+        message={`Are you sure you want to delete "${itemToDelete?.websiteName}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={handleDeleteItem}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setItemToDelete(null);
+        }}
+        variant="danger"
+      />
     </div>
   );
 };

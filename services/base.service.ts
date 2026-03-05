@@ -1,6 +1,5 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase/client';
 import { offlineQueue, QueuedOperation, isOnline } from '../utils/offline-queue';
-import type { PostgrestFilterBuilder } from '@supabase/postgrest-js';
 
 // Generic type for database row
 export type TableRow = Record<string, unknown>;
@@ -191,7 +190,7 @@ export class BaseService<T extends TableRow> {
 
     const { data: result, error } = await supabase
       .from(this.tableName)
-      .insert(data)
+      .insert(data as any)
       .select()
       .single();
 
@@ -227,8 +226,8 @@ export class BaseService<T extends TableRow> {
       return { data: null, error: 'Item not found in cache', offline: true };
     }
 
-    const { data: result, error } = await supabase
-      .from(this.tableName)
+    const { data: result, error } = await (supabase
+      .from(this.tableName) as any)
       .update(data)
       .eq(this.primaryKey, id)
       .select()
@@ -293,7 +292,7 @@ export class BaseService<T extends TableRow> {
 
     const { data: result, error } = await supabase
       .from(this.tableName)
-      .upsert(data)
+      .upsert(data as any)
       .select()
       .single();
 
@@ -320,8 +319,8 @@ export class BaseService<T extends TableRow> {
       return { data: results, error: null, count: results.length, offline: true };
     }
 
-    const { data, error } = await supabase
-      .from(this.tableName)
+    const { data, error } = await (supabase
+      .from(this.tableName) as any)
       .insert(items)
       .select();
 
@@ -407,17 +406,17 @@ export class BaseService<T extends TableRow> {
       }
 
       try {
+        const table = supabase.from(this.tableName) as any;
         switch (op.operation) {
           case 'insert': {
-            const { error } = await supabase.from(this.tableName).insert(op.data);
+            const { error } = await table.insert(op.data);
             if (error) return { success: false, error: error.message };
             break;
           }
           case 'update': {
             const id = op.data[this.primaryKey] as string;
             const { [this.primaryKey]: _, ...updateData } = op.data;
-            const { error } = await supabase
-              .from(this.tableName)
+            const { error } = await table
               .update(updateData)
               .eq(this.primaryKey, id);
             if (error) return { success: false, error: error.message };
@@ -425,8 +424,7 @@ export class BaseService<T extends TableRow> {
           }
           case 'delete': {
             const id = op.data[this.primaryKey] as string;
-            const { error } = await supabase
-              .from(this.tableName)
+            const { error } = await table
               .delete()
               .eq(this.primaryKey, id);
             if (error) return { success: false, error: error.message };

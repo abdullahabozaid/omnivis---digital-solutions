@@ -1,4 +1,4 @@
-export type ViewState = 'overview' | 'clients' | 'crm' | 'templates' | 'clientwork' | 'calendar' | 'tasks' | 'settings' | 'analytics' | 'websites';
+export type ViewState = 'overview' | 'clients' | 'crm' | 'templates' | 'clientwork' | 'calendar' | 'tasks' | 'settings' | 'analytics' | 'websites' | 'leads' | 'catalog';
 
 // User Settings
 export interface UserSettings {
@@ -208,6 +208,23 @@ export interface DashboardGoals {
   yearlyRevenue: number;
   totalClients: number;
   pipelineValue: number;
+}
+
+// View Customization - show/hide sections
+export interface ViewCustomization {
+  dashboard: {
+    hiddenItems: string[]; // IDs of hidden sections
+    widgetOrder?: string[]; // Order of dashboard widgets
+  };
+  crm: {
+    hiddenItems: string[];
+  };
+  tasks: {
+    hiddenItems: string[];
+  };
+  calendar: {
+    hiddenItems: string[];
+  };
 }
 
 // Projects System
@@ -491,4 +508,236 @@ export interface LibraryWebsite {
   createdAt: string;
   updatedAt: string;
   notes?: string;
+  // New fields for enhanced filtering
+  tier: WebsiteTier;
+  websiteType: WebsiteType;
+  style: WebsiteStyle;
+  features: WebsiteFeature[];
+  isFavorite?: boolean;
 }
+
+// Website Tier (Premium/Basic filter)
+export type WebsiteTier = 'premium' | 'basic' | 'starter';
+
+export const WEBSITE_TIERS = [
+  { id: 'premium', name: 'Premium' },
+  { id: 'basic', name: 'Basic' },
+  { id: 'starter', name: 'Starter' },
+] as const;
+
+// Website Type (Website/Web App/Funnel)
+export type WebsiteType = 'website' | 'webapp' | 'funnel';
+
+export const WEBSITE_TYPES = [
+  { id: 'website', name: 'Website' },
+  { id: 'webapp', name: 'Web App' },
+  { id: 'funnel', name: 'Funnel' },
+] as const;
+
+// Website Style Categories
+export type WebsiteStyle = 'minimal' | 'modern' | 'corporate' | 'creative' | 'classic';
+
+export const WEBSITE_STYLES = [
+  { id: 'minimal', name: 'Minimal' },
+  { id: 'modern', name: 'Modern' },
+  { id: 'corporate', name: 'Corporate' },
+  { id: 'creative', name: 'Creative' },
+  { id: 'classic', name: 'Classic' },
+] as const;
+
+// Website Features (for feature-based filtering)
+export type WebsiteFeature = 'animations' | 'forms' | 'ecommerce' | 'blog' | 'gallery' | 'video' | 'testimonials' | 'booking';
+
+export const WEBSITE_FEATURES = [
+  { id: 'animations', name: 'Animations' },
+  { id: 'forms', name: 'Contact Forms' },
+  { id: 'ecommerce', name: 'E-commerce' },
+  { id: 'blog', name: 'Blog Section' },
+  { id: 'gallery', name: 'Image Gallery' },
+  { id: 'video', name: 'Video Content' },
+  { id: 'testimonials', name: 'Testimonials' },
+  { id: 'booking', name: 'Booking System' },
+] as const;
+
+// Page Count Range (for filtering)
+export type PageCountRange = 'all' | '1-3' | '4-6' | '7+';
+
+// ============================================
+// LEADS SYSTEM TYPES
+// ============================================
+
+// Industry options for leads (reuses similar structure to snapshots)
+export const LEAD_INDUSTRIES = [
+  { id: 'plumbing', name: 'Plumbing', icon: '🔧', color: 'bg-blue-500' },
+  { id: 'restaurant', name: 'Restaurant', icon: '🍽️', color: 'bg-orange-500' },
+  { id: 'real-estate', name: 'Real Estate', icon: '🏠', color: 'bg-green-500' },
+  { id: 'consultant', name: 'Consultant', icon: '💼', color: 'bg-purple-500' },
+  { id: 'healthcare', name: 'Healthcare', icon: '🏥', color: 'bg-red-500' },
+  { id: 'fitness', name: 'Fitness', icon: '💪', color: 'bg-pink-500' },
+  { id: 'retail', name: 'Retail', icon: '🛍️', color: 'bg-amber-500' },
+  { id: 'construction', name: 'Construction', icon: '🏗️', color: 'bg-yellow-500' },
+  { id: 'automotive', name: 'Automotive', icon: '🚗', color: 'bg-slate-500' },
+  { id: 'beauty', name: 'Beauty & Spa', icon: '💅', color: 'bg-rose-500' },
+  { id: 'legal', name: 'Legal', icon: '⚖️', color: 'bg-indigo-500' },
+  { id: 'other', name: 'Other', icon: '📦', color: 'bg-gray-500' },
+] as const;
+
+export type LeadIndustry = typeof LEAD_INDUSTRIES[number]['id'];
+
+// Lead status for kanban stages
+export type LeadStatus = 'new' | 'contacted' | 'converted' | 'lost';
+
+// Lead status configuration for UI
+export const LEAD_STATUSES = [
+  { id: 'new', name: 'New', color: 'bg-blue-400' },
+  { id: 'contacted', name: 'Contacted', color: 'bg-amber-400' },
+  { id: 'converted', name: 'Converted', color: 'bg-green-500' },
+  { id: 'lost', name: 'Lost', color: 'bg-red-400' },
+] as const;
+
+// Website rating (1-5 stars)
+export type WebsiteRating = 1 | 2 | 3 | 4 | 5;
+
+// Lead interface
+export interface Lead {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  company: string;
+  website: string;
+  websiteRating: WebsiteRating | null;
+  industry: LeadIndustry;
+  status: LeadStatus;
+  notes: string;
+  source?: string; // Where the lead came from (e.g., 'google-sheets', 'referral', 'website')
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================
+// WEBSITE CATALOG TYPES
+// ============================================
+
+// Website Catalog Item for AI-generated mockups
+// Task item for website catalog checklists
+export interface CatalogTask {
+  id: string;
+  title: string;
+  completed: boolean;
+  createdAt: string;
+}
+
+// Prompt history item for tracking AI generation prompts
+export interface CatalogPromptHistory {
+  id: string;
+  title: string; // Short title like "Prompt 1" or custom name
+  prompt: string; // The actual prompt text
+  createdAt: string;
+}
+
+// Preview type for catalog items
+export type CatalogPreviewType = 'iframe' | 'image' | 'none';
+
+export interface WebsiteCatalogItem {
+  id: string;
+  websiteName: string;
+  businessType: string;
+  totalPages: number;
+  pageList: string; // Comma-separated list: "Home, About, Services, Contact"
+  designStyle: string;
+  primaryColors: string;
+  typography: string;
+  targetAudience: string;
+  keyFeatures: string;
+  ctas: string; // Call to Action elements
+  functionalityNeeds: string;
+  specialNotes: string;
+  linkToSite: string; // URL for iframe preview
+  previewType: CatalogPreviewType; // Type of preview: iframe (live link), image (screenshot/upload), or none
+  previewImage: string; // URL or base64 data for image preview
+  isCompleted: boolean; // Tracking if added to library
+  isFavorite: boolean;
+  tasks: CatalogTask[]; // Checklist tasks for tracking progress
+  promptHistory: CatalogPromptHistory[]; // History of AI generation prompts
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Completion status filter for catalog
+export type CatalogCompletionStatus = 'all' | 'completed' | 'not-completed';
+
+// Sort options for catalog
+export type CatalogSortField = 'websiteName' | 'businessType' | 'totalPages' | 'createdAt';
+
+// Industry categories for filtering
+export type CatalogIndustryCategory =
+  | 'all'
+  | 'professional-services'
+  | 'hospitality-food'
+  | 'wellness-fitness'
+  | 'retail-ecommerce'
+  | 'creative-design'
+  | 'technology-saas'
+  | 'education'
+  | 'travel-adventure'
+  | 'specialized-services';
+
+// Color theme categories for filtering
+export type CatalogColorTheme =
+  | 'all'
+  | 'dark-modern'
+  | 'warm-earthy'
+  | 'luxury-gold'
+  | 'soft-pastel'
+  | 'vibrant-bold'
+  | 'professional-neutral';
+
+// Design style categories for filtering
+export type CatalogDesignStyle =
+  | 'all'
+  | 'minimalist'
+  | 'luxury-elegant'
+  | 'rustic-artisan'
+  | 'tech-futuristic'
+  | 'wellness-organic'
+  | 'bold-energetic';
+
+// Page count categories for filtering
+export type CatalogPageCategory = 'all' | 'single-page' | 'standard' | 'full-featured';
+
+// Industry category mapping
+export const CATALOG_INDUSTRY_CATEGORIES: { value: CatalogIndustryCategory; label: string; keywords: string[] }[] = [
+  { value: 'all', label: 'All Industries', keywords: [] },
+  { value: 'professional-services', label: 'Professional Services', keywords: ['consulting', 'law', 'financial', 'advisory', 'coaching', 'agency'] },
+  { value: 'hospitality-food', label: 'Hospitality & Food', keywords: ['restaurant', 'café', 'coffee', 'bakery', 'brewery', 'dining', 'bistro', 'steakhouse', 'hotel'] },
+  { value: 'wellness-fitness', label: 'Wellness & Fitness', keywords: ['spa', 'wellness', 'fitness', 'gym', 'yoga', 'meditation', 'dance', 'mindfulness'] },
+  { value: 'retail-ecommerce', label: 'Retail & E-commerce', keywords: ['e-commerce', 'shop', 'store', 'retail', 'fashion', 'jewelry', 'florist', 'plant', 'nursery', 'eyewear', 'leather', 'home goods'] },
+  { value: 'creative-design', label: 'Creative & Design', keywords: ['design', 'architecture', 'photography', 'creative', 'studio', 'portfolio', 'interior'] },
+  { value: 'technology-saas', label: 'Technology & SaaS', keywords: ['saas', 'tech', 'software', 'platform', 'ai', 'app', 'cloud', 'fintech', 'banking', 'analytics', 'streaming'] },
+  { value: 'education', label: 'Education & Learning', keywords: ['education', 'learning', 'academy', 'conservatory', 'school', 'training'] },
+  { value: 'travel-adventure', label: 'Travel & Adventure', keywords: ['travel', 'tourism', 'adventure', 'expedition', 'vacation', 'escape'] },
+  { value: 'specialized-services', label: 'Specialized Services', keywords: ['tattoo', 'pet', 'dental', 'hvac', 'auto', 'repair', 'moving', 'landscaping', 'cleaning', 'real estate', 'salon', 'barbershop', 'publishing'] },
+];
+
+// Color theme mapping
+export const CATALOG_COLOR_THEMES: { value: CatalogColorTheme; label: string; keywords: string[] }[] = [
+  { value: 'all', label: 'All Colors', keywords: [] },
+  { value: 'dark-modern', label: 'Dark & Modern', keywords: ['black', 'dark', 'navy', 'charcoal', 'deep', '#0', '#1', 'midnight'] },
+  { value: 'warm-earthy', label: 'Warm & Earthy', keywords: ['brown', 'cream', 'beige', 'terracotta', 'copper', 'espresso', 'amber', 'wood', 'warm'] },
+  { value: 'luxury-gold', label: 'Luxury & Gold', keywords: ['gold', 'champagne', 'bronze', 'metallic', 'antique'] },
+  { value: 'soft-pastel', label: 'Soft & Pastel', keywords: ['blush', 'pink', 'sage', 'mint', 'soft', 'pastel', 'rose', 'cream', 'ivory'] },
+  { value: 'vibrant-bold', label: 'Vibrant & Bold', keywords: ['electric', 'vibrant', 'bright', 'neon', 'lime', 'orange', 'coral', 'purple', 'magenta'] },
+  { value: 'professional-neutral', label: 'Professional & Neutral', keywords: ['white', 'gray', 'slate', 'professional', 'clean', 'neutral'] },
+];
+
+// Design style mapping
+export const CATALOG_DESIGN_STYLES: { value: CatalogDesignStyle; label: string; keywords: string[] }[] = [
+  { value: 'all', label: 'All Styles', keywords: [] },
+  { value: 'minimalist', label: 'Minimalist', keywords: ['minimal', 'clean', 'simple', 'gallery', 'photography'] },
+  { value: 'luxury-elegant', label: 'Luxury & Elegant', keywords: ['luxury', 'elegant', 'sophisticated', 'premium', 'refined', 'prestige', 'upscale'] },
+  { value: 'rustic-artisan', label: 'Rustic & Artisan', keywords: ['rustic', 'artisan', 'handcrafted', 'vintage', 'industrial', 'heritage', 'craft'] },
+  { value: 'tech-futuristic', label: 'Tech & Futuristic', keywords: ['tech', 'modern', 'futuristic', 'cosmic', 'glassmorphism', 'digital', 'dark'] },
+  { value: 'wellness-organic', label: 'Wellness & Organic', keywords: ['organic', 'natural', 'zen', 'serene', 'calm', 'nature', 'botanical', 'peaceful'] },
+  { value: 'bold-energetic', label: 'Bold & Energetic', keywords: ['bold', 'energetic', 'powerful', 'dynamic', 'motivational', 'vibrant'] },
+];

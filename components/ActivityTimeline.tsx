@@ -332,9 +332,9 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
       <div className="relative">
         {activities.length === 0 ? (
           <div className="py-8 text-center">
-            <Clock size={32} className="mx-auto text-gray-300 mb-2" />
-            <p className="text-sm text-gray-400">No activity yet</p>
-            <p className="text-xs text-gray-300 mt-1">Log your first interaction</p>
+            <Clock size={32} className="mx-auto text-gray-300 dark:text-dark-subtle mb-2" />
+            <p className="text-sm text-gray-500 dark:text-dark-muted">No activity yet</p>
+            <p className="text-xs text-gray-400 dark:text-dark-muted mt-1">Log your first interaction</p>
           </div>
         ) : (
           <div className="space-y-0">

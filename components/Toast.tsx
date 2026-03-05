@@ -3,10 +3,17 @@ import { Check, X, AlertTriangle, Info } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 export interface ToastMessage {
   id: string;
   type: ToastType;
   message: string;
+  action?: ToastAction;
+  duration?: number; // Custom duration in ms, default 3000
 }
 
 interface ToastProps {
@@ -16,15 +23,16 @@ interface ToastProps {
 
 const ToastItem: React.FC<{ toast: ToastMessage; onRemove: () => void }> = ({ toast, onRemove }) => {
   const [isExiting, setIsExiting] = useState(false);
+  const duration = toast.duration ?? (toast.action ? 5000 : 3000); // Longer duration if there's an action
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsExiting(true);
       setTimeout(onRemove, 300);
-    }, 3000);
+    }, duration);
 
     return () => clearTimeout(timer);
-  }, [onRemove]);
+  }, [onRemove, duration]);
 
   const handleClose = () => {
     setIsExiting(true);
@@ -70,6 +78,13 @@ const ToastItem: React.FC<{ toast: ToastMessage; onRemove: () => void }> = ({ to
 
   const styles = getStyles();
 
+  const handleAction = () => {
+    if (toast.action) {
+      toast.action.onClick();
+      handleClose();
+    }
+  };
+
   return (
     <div
       className={`flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg ${styles.bg} ${styles.border} transition-all duration-300 ${
@@ -80,6 +95,14 @@ const ToastItem: React.FC<{ toast: ToastMessage; onRemove: () => void }> = ({ to
         {styles.icon}
       </div>
       <p className={`text-sm font-medium ${styles.text} flex-1`}>{toast.message}</p>
+      {toast.action && (
+        <button
+          onClick={handleAction}
+          className="text-sm font-semibold text-gold-600 dark:text-gold-400 hover:text-gold-700 dark:hover:text-gold-300 transition-colors px-2 py-1 rounded hover:bg-gold-50 dark:hover:bg-gold-900/30"
+        >
+          {toast.action.label}
+        </button>
+      )}
       <button
         onClick={handleClose}
         className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1"
@@ -101,8 +124,13 @@ export const ToastContainer: React.FC<ToastProps> = ({ toasts, removeToast }) =>
 };
 
 // Toast context and hook for easy usage
+interface ShowToastOptions {
+  action?: ToastAction;
+  duration?: number;
+}
+
 interface ToastContextType {
-  showToast: (type: ToastType, message: string) => void;
+  showToast: (type: ToastType, message: string, options?: ShowToastOptions) => void;
 }
 
 export const ToastContext = React.createContext<ToastContextType | null>(null);
@@ -122,9 +150,9 @@ interface ToastProviderProps {
 export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
-  const showToast = (type: ToastType, message: string) => {
+  const showToast = (type: ToastType, message: string, options?: ShowToastOptions) => {
     const id = Date.now().toString();
-    setToasts((prev) => [...prev, { id, type, message }]);
+    setToasts((prev) => [...prev, { id, type, message, action: options?.action, duration: options?.duration }]);
   };
 
   const removeToast = (id: string) => {

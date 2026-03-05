@@ -63,7 +63,7 @@ export function useRealtime<T = Record<string, unknown>>(
 
     const channel = supabase.channel(channelName);
 
-    const subscription = channel
+    const subscription = (channel as any)
       .on(
         'postgres_changes',
         {
@@ -72,7 +72,7 @@ export function useRealtime<T = Record<string, unknown>>(
           table,
           filter,
         },
-        (payload) => {
+        (payload: any) => {
           const realtimePayload: RealtimePayload<T> = {
             eventType: payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE',
             new: payload.new as T | null,

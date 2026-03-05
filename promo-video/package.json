@@ -1,0 +1,22 @@
+{
+  "name": "promo-video",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "scripts": {
+    "studio": "remotion studio",
+    "render": "remotion render CrmPromo out/crm-promo.mp4",
+    "build": "remotion render CrmPromo out/crm-promo.mp4 --codec h264"
+  },
+  "keywords": ["remotion", "video", "crm", "promo"],
+  "author": "Tawfeeq",
+  "license": "MIT",
+  "description": "CRM Promotional Video built with Remotion",
+  "dependencies": {
+    "@remotion/cli": "^4.0.409",
+    "@remotion/transitions": "^4.0.409",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "remotion": "^4.0.409",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,17 +1,58 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Bell, ChevronDown, Clock, User, Settings, LogOut, Check, X, Sun, Moon, Monitor } from 'lucide-react';
+import { Search, Bell, ChevronDown, Clock, User, Settings, LogOut, Check, X, Sun, Moon, Monitor, Home, ChevronRight } from 'lucide-react';
 import { ViewState, Activity, UserSettings } from '../types';
 import { ConfirmDialog } from './ConfirmDialog';
 import { useToast } from './Toast';
 import { useTheme } from './ThemeContext';
 
+// Breadcrumb component for navigation context
+const Breadcrumb: React.FC<{
+  currentView: ViewState;
+  onNavigate?: (view: ViewState) => void;
+}> = ({ currentView, onNavigate }) => {
+  const viewLabels: Record<ViewState, string> = {
+    overview: 'Dashboard',
+    calendar: 'Calendar',
+    tasks: 'Tasks',
+    leads: 'Leads',
+    clients: 'Clients',
+    crm: 'CRM Pipeline',
+    websites: 'Website Library',
+    templates: 'Snapshots',
+    clientwork: 'Client Work',
+    settings: 'Settings',
+    analytics: 'Analytics',
+  };
+
+  // Don't show breadcrumb on dashboard
+  if (currentView === 'overview') return null;
+
+  return (
+    <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm">
+      <button
+        onClick={() => onNavigate?.('overview')}
+        className="flex items-center gap-1 text-gray-400 dark:text-dark-muted hover:text-gold-600 dark:hover:text-gold-400 transition-colors focus:outline-none focus:text-gold-600 dark:focus:text-gold-400"
+        aria-label="Go to Dashboard"
+      >
+        <Home size={14} />
+        <span className="hidden sm:inline">Dashboard</span>
+      </button>
+      <ChevronRight size={14} className="text-gray-300 dark:text-dark-subtle" />
+      <span className="text-gray-600 dark:text-dark-text font-medium">
+        {viewLabels[currentView]}
+      </span>
+    </nav>
+  );
+};
+
 interface HeaderProps {
   title: string;
   onOpenCommandPalette?: () => void;
   onNavigate?: (view: ViewState) => void;
+  currentView?: ViewState;
 }
 
-const Header: React.FC<HeaderProps> = ({ title, onOpenCommandPalette, onNavigate }) => {
+const Header: React.FC<HeaderProps> = ({ title, onOpenCommandPalette, onNavigate, currentView }) => {
   const { showToast } = useToast();
   const { theme, setTheme, resolvedTheme, toggleTheme } = useTheme();
   const [notificationOpen, setNotificationOpen] = useState(false);
@@ -126,14 +167,15 @@ const Header: React.FC<HeaderProps> = ({ title, onOpenCommandPalette, onNavigate
 
   return (
     <header className="h-20 bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border flex items-center justify-between px-10 transition-colors duration-200">
-      <div>
+      <div className="flex flex-col gap-1">
+        {currentView && <Breadcrumb currentView={currentView} onNavigate={onNavigate} />}
         <h1 className="text-2xl font-semibold text-gray-800 dark:text-dark-text">{title}</h1>
       </div>
 
       <div className="flex items-center gap-8">
         <button
           onClick={onOpenCommandPalette}
-          className="relative w-72 flex items-center gap-3 pl-4 pr-3 py-2.5 bg-gray-50 dark:bg-dark-elevated border border-gray-200 dark:border-dark-border rounded-xl text-sm text-gray-400 dark:text-dark-muted hover:bg-white dark:hover:bg-dark-card hover:border-gray-300 dark:hover:border-gold-700 hover:shadow-md transition-all duration-200 text-left group"
+          className="relative w-72 flex items-center gap-3 pl-4 pr-3 py-2.5 bg-gray-50 dark:bg-dark-elevated border border-gray-200 dark:border-dark-border rounded-xl text-sm text-gray-400 dark:text-dark-muted hover:bg-white dark:hover:bg-dark-card hover:border-gray-300 dark:hover:border-gold-700 hover:shadow-md transition-all duration-200 text-left group focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-1"
         >
           <Search size={18} className="group-hover:text-gold-500 transition-colors" />
           <span className="flex-1">Search...</span>
@@ -150,7 +192,7 @@ const Header: React.FC<HeaderProps> = ({ title, onOpenCommandPalette, onNavigate
               setNotificationOpen(false);
               setProfileOpen(false);
             }}
-            className="relative p-2.5 text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover rounded-xl transition-all duration-200 group"
+            className="relative p-2.5 text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover rounded-xl transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-gold-500"
             title={`Current: ${theme === 'system' ? 'System' : resolvedTheme === 'dark' ? 'Dark' : 'Light'}`}
           >
             {resolvedTheme === 'dark' ? (
@@ -222,7 +264,8 @@ const Header: React.FC<HeaderProps> = ({ title, onOpenCommandPalette, onNavigate
               setNotificationOpen(!notificationOpen);
               setProfileOpen(false);
             }}
-            className="relative p-2.5 text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-elevated rounded-xl transition-all duration-200 group"
+            aria-label="Notifications"
+            className="relative p-2.5 text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-elevated rounded-xl transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-gold-500"
           >
             <Bell size={20} className="transition-transform duration-200 group-hover:scale-110" />
             {unreadCount > 0 && (
@@ -302,7 +345,8 @@ const Header: React.FC<HeaderProps> = ({ title, onOpenCommandPalette, onNavigate
               setProfileOpen(!profileOpen);
               setNotificationOpen(false);
             }}
-            className="flex items-center gap-3 pl-6 border-l border-gray-200 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-elevated -mr-4 pr-4 py-2 rounded-r-xl transition-all duration-200 group"
+            aria-label="Profile menu"
+            className="flex items-center gap-3 pl-6 border-l border-gray-200 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-elevated -mr-4 pr-4 py-2 rounded-r-xl transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-inset"
           >
             <div className="w-10 h-10 rounded-full bg-gold-100 dark:bg-gold-900/40 border-2 border-gold-300 dark:border-gold-700 flex items-center justify-center group-hover:border-gold-400 dark:group-hover:border-gold-500 group-hover:shadow-md transition-all duration-200">
               <span className="text-sm font-semibold text-gold-700 dark:text-gold-300">{userInitials}</span>

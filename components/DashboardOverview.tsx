@@ -3,10 +3,170 @@ import {
   Users, Layout, TrendingUp, DollarSign, Inbox,
   AlertTriangle, CheckSquare, Square, Star, Calendar as CalendarIcon,
   ChevronLeft, ChevronRight, Clock, Plus, X, Video, ArrowRight, Briefcase,
-  Target, Settings, Edit3
+  Target, Settings, Edit3, SlidersHorizontal, Check, Eye, EyeOff, RotateCcw,
+  GripVertical, ArrowUp, ArrowDown
 } from 'lucide-react';
 import { ViewState, UserSettings, DashboardGoals } from '../types';
 import { useToast } from './Toast';
+import { useViewCustomization, DEFAULT_WIDGET_ORDER } from '../hooks/useViewCustomization';
+
+// Skeleton loader components
+const SkeletonPulse: React.FC<{ className?: string }> = ({ className = '' }) => (
+  <div className={`animate-pulse bg-gray-200 dark:bg-dark-elevated rounded ${className}`} />
+);
+
+const StatCardSkeleton: React.FC = () => (
+  <div className="bg-white dark:bg-dark-card p-6 rounded-xl border border-gray-200 dark:border-dark-border">
+    <div className="flex justify-between items-start mb-4">
+      <SkeletonPulse className="w-12 h-12 rounded-xl" />
+      <SkeletonPulse className="w-20 h-4" />
+    </div>
+    <SkeletonPulse className="w-24 h-8 mb-2" />
+    <SkeletonPulse className="w-32 h-4 mb-3" />
+    <SkeletonPulse className="w-full h-2 rounded-full" />
+  </div>
+);
+
+const TaskListSkeleton: React.FC = () => (
+  <div className="space-y-3">
+    {[1, 2, 3].map(i => (
+      <div key={i} className="flex items-center gap-3 p-2">
+        <SkeletonPulse className="w-5 h-5 rounded" />
+        <div className="flex-1">
+          <SkeletonPulse className="w-3/4 h-4 mb-1" />
+          <SkeletonPulse className="w-1/2 h-3" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+const ClientListSkeleton: React.FC = () => (
+  <div className="divide-y divide-gray-100 dark:divide-dark-border">
+    {[1, 2, 3, 4].map(i => (
+      <div key={i} className="px-8 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <SkeletonPulse className="w-10 h-10 rounded-full" />
+          <div>
+            <SkeletonPulse className="w-32 h-4 mb-1" />
+            <SkeletonPulse className="w-24 h-3" />
+          </div>
+        </div>
+        <SkeletonPulse className="w-16 h-5 rounded-full" />
+      </div>
+    ))}
+  </div>
+);
+
+// Helper component for customizable sections
+interface CustomizableSectionProps {
+  id: string;
+  isVisible: boolean;
+  customizeMode: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+  className?: string;
+}
+
+const CustomizableSection: React.FC<CustomizableSectionProps> = ({
+  id,
+  isVisible,
+  customizeMode,
+  onToggle,
+  children,
+  className = '',
+}) => {
+  if (!isVisible && !customizeMode) return null;
+
+  return (
+    <div className={`relative ${className} ${!isVisible ? 'opacity-40' : ''}`}>
+      {customizeMode && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle();
+          }}
+          className={`absolute top-3 right-3 z-10 p-2 rounded-lg shadow-sm border transition-all ${
+            isVisible
+              ? 'bg-white dark:bg-dark-elevated border-gray-200 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-hover text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text'
+              : 'bg-gold-500 border-gold-500 text-white hover:bg-gold-600'
+          }`}
+        >
+          {isVisible ? <Eye size={16} /> : <EyeOff size={16} />}
+        </button>
+      )}
+      {children}
+    </div>
+  );
+};
+
+// Widget labels for the reordering UI
+const WIDGET_LABELS: Record<string, string> = {
+  stats: 'Stats Cards',
+  productivity: 'Productivity',
+  'pipeline-clients': 'Pipeline & Clients',
+  calendar: 'Calendar',
+};
+
+// Reorderable widget wrapper
+interface ReorderableWidgetProps {
+  widgetId: string;
+  customizeMode: boolean;
+  onMoveUp: (id: string) => void;
+  onMoveDown: (id: string) => void;
+  isFirst: boolean;
+  isLast: boolean;
+  children: React.ReactNode;
+}
+
+const ReorderableWidget: React.FC<ReorderableWidgetProps> = ({
+  widgetId,
+  customizeMode,
+  onMoveUp,
+  onMoveDown,
+  isFirst,
+  isLast,
+  children,
+}) => {
+  return (
+    <div className="relative">
+      {customizeMode && (
+        <div className="absolute -left-12 top-1/2 -translate-y-1/2 flex flex-col gap-1 z-10">
+          <button
+            onClick={() => onMoveUp(widgetId)}
+            disabled={isFirst}
+            aria-label={`Move ${WIDGET_LABELS[widgetId]} up`}
+            className={`p-1.5 rounded-lg border transition-all ${
+              isFirst
+                ? 'border-gray-100 dark:border-dark-border text-gray-300 dark:text-dark-subtle cursor-not-allowed'
+                : 'border-gray-200 dark:border-dark-border bg-white dark:bg-dark-elevated text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text hover:bg-gray-50 dark:hover:bg-dark-hover hover:border-gray-300'
+            }`}
+          >
+            <ArrowUp size={14} />
+          </button>
+          <button
+            onClick={() => onMoveDown(widgetId)}
+            disabled={isLast}
+            aria-label={`Move ${WIDGET_LABELS[widgetId]} down`}
+            className={`p-1.5 rounded-lg border transition-all ${
+              isLast
+                ? 'border-gray-100 dark:border-dark-border text-gray-300 dark:text-dark-subtle cursor-not-allowed'
+                : 'border-gray-200 dark:border-dark-border bg-white dark:bg-dark-elevated text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text hover:bg-gray-50 dark:hover:bg-dark-hover hover:border-gray-300'
+            }`}
+          >
+            <ArrowDown size={14} />
+          </button>
+        </div>
+      )}
+      {customizeMode && (
+        <div className="absolute -left-12 top-0 text-[10px] font-medium text-gray-400 dark:text-dark-muted uppercase tracking-wide whitespace-nowrap -translate-x-full pr-2 hidden lg:block">
+          {WIDGET_LABELS[widgetId]}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+};
 
 // Types matching ModuleViews.tsx
 interface LocalClient {
@@ -90,6 +250,12 @@ interface DashboardOverviewProps {
 const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => {
   // Toast notifications
   const { showToast } = useToast();
+
+  // View customization
+  const { isVisible, toggleVisibility, getHiddenCount, resetView, getWidgetOrder, moveWidgetUp, moveWidgetDown, resetWidgetOrder } = useViewCustomization();
+  const [customizeMode, setCustomizeMode] = useState(false);
+  const hiddenCount = getHiddenCount('dashboard');
+  const widgetOrder = getWidgetOrder();
 
   // User settings for greeting
   const [userSettings, setUserSettings] = useState<UserSettings | null>(() => {
@@ -220,36 +386,44 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
     return {
       items: [
         {
+          id: 'stat-clients',
           label: "Total Clients",
           value: totalClients.toString(),
-          icon: <Users size={20} className="text-gold-600 dark:text-gold-400" />,
+          icon: <Users size={20} className="text-gray-600 dark:text-gray-400" />,
           goal: goals.totalClients,
           progress: clientProgress,
           showProgress: true,
+          viewTarget: 'clients' as ViewState,
         },
         {
+          id: 'stat-templates',
           label: "Active Templates",
           value: uniqueTemplates.toString(),
-          icon: <Layout size={20} className="text-gold-600 dark:text-gold-400" />,
+          icon: <Layout size={20} className="text-gray-600 dark:text-gray-400" />,
           goal: null,
           progress: 0,
           showProgress: false,
+          viewTarget: 'templates' as ViewState,
         },
         {
+          id: 'stat-pipeline',
           label: "Pipeline Value",
           value: `£${pipelineValue.toLocaleString()}`,
-          icon: <TrendingUp size={20} className="text-gold-600 dark:text-gold-400" />,
+          icon: <TrendingUp size={20} className="text-gray-600 dark:text-gray-400" />,
           goal: goals.pipelineValue,
           progress: pipelineProgress,
           showProgress: true,
+          viewTarget: 'crm' as ViewState,
         },
         {
+          id: 'stat-revenue',
           label: "Monthly Revenue",
           value: `£${monthlyRevenue.toLocaleString()}`,
-          icon: <DollarSign size={20} className="text-gold-600 dark:text-gold-400" />,
+          icon: <DollarSign size={20} className="text-gray-600 dark:text-gray-400" />,
           goal: goals.monthlyRevenue,
           progress: revenueProgress,
           showProgress: true,
+          viewTarget: 'analytics' as ViewState,
         },
       ],
       raw: {
@@ -278,7 +452,8 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
   const recentClients = useMemo(() => {
     return clients.slice().reverse().slice(0, 5).map(client => ({
       id: client.id,
-      name: client.company || client.name,
+      name: client.name, // Contact/person name
+      company: client.company, // Company name
       template: client.template,
       status: client.status,
       amount: `£${client.payment}/mo`
@@ -526,6 +701,33 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
           </p>
         </div>
         <div className="flex gap-3">
+          {/* Customize Button */}
+          <button
+            onClick={() => setCustomizeMode(!customizeMode)}
+            className={`flex items-center gap-2 px-4 py-2.5 border rounded-xl transition-all duration-150 text-sm font-medium ${
+              customizeMode
+                ? 'border-gray-400 dark:border-gray-600 bg-gray-100 dark:bg-dark-elevated text-gray-700 dark:text-gray-300'
+                : 'border-gray-200 dark:border-dark-border bg-white dark:bg-dark-elevated text-gray-600 dark:text-dark-muted hover:bg-gray-50 dark:hover:bg-dark-hover'
+            }`}
+          >
+            {customizeMode ? <Check size={16} /> : <SlidersHorizontal size={16} />}
+            {customizeMode ? 'Done' : 'Customize'}
+            {!customizeMode && hiddenCount > 0 && (
+              <span className="bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-800 text-xs px-1.5 py-0.5 rounded-full">{hiddenCount}</span>
+            )}
+          </button>
+          {customizeMode && (
+            <button
+              onClick={() => {
+                resetView('dashboard');
+                resetWidgetOrder();
+              }}
+              className="flex items-center gap-2 px-3 py-2.5 border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-elevated rounded-xl hover:bg-gray-50 dark:hover:bg-dark-hover text-sm font-medium text-gray-600 dark:text-dark-muted transition-all duration-150"
+            >
+              <RotateCcw size={14} />
+              Reset All
+            </button>
+          )}
           <button
             onClick={openEditGoals}
             className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-elevated rounded-xl hover:bg-gray-50 dark:hover:bg-dark-hover hover:border-gray-300 dark:hover:border-dark-border active:scale-[0.98] active:bg-gray-100 dark:active:bg-dark-card transition-all duration-150 text-sm font-medium text-gray-600 dark:text-dark-muted"
@@ -535,7 +737,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
           </button>
           <button
             onClick={() => setShowAddTask(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gold-500 text-white rounded-xl hover:bg-gold-600 active:scale-[0.98] active:bg-gold-700 transition-all duration-150 text-sm font-semibold shadow-sm hover:shadow-md hover:shadow-gold-200/50"
+            className="flex items-center gap-2 px-5 py-2.5 bg-gold-500 text-white rounded-xl hover:bg-gold-600 active:scale-[0.98] active:bg-gold-700 transition-all duration-150 text-sm font-semibold shadow-sm hover:shadow-md hover:shadow-gold-200/50 dark:hover:shadow-gold-900/20"
           >
             <Plus size={16} strokeWidth={2.5} />
             Add Task
@@ -550,66 +752,141 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
         </div>
       </div>
 
+      {/* Widget Order Panel - shown in customize mode */}
+      {customizeMode && (
+        <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <GripVertical size={16} className="text-gray-400 dark:text-dark-muted" />
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-dark-text">Widget Order</h3>
+            </div>
+            <p className="text-xs text-gray-400 dark:text-dark-muted">Use arrows to reorder sections</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {widgetOrder.map((widgetId, index) => (
+              <div
+                key={widgetId}
+                className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-dark-elevated rounded-lg border border-gray-200 dark:border-dark-border"
+              >
+                <span className="text-xs font-medium text-gray-500 dark:text-dark-muted w-4">{index + 1}.</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-dark-text">{WIDGET_LABELS[widgetId]}</span>
+                <div className="flex gap-1 ml-2">
+                  <button
+                    onClick={() => moveWidgetUp(widgetId)}
+                    disabled={index === 0}
+                    aria-label={`Move ${WIDGET_LABELS[widgetId]} up`}
+                    className={`p-1 rounded transition-all ${
+                      index === 0
+                        ? 'text-gray-300 dark:text-dark-subtle cursor-not-allowed'
+                        : 'text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-hover'
+                    }`}
+                  >
+                    <ArrowUp size={12} />
+                  </button>
+                  <button
+                    onClick={() => moveWidgetDown(widgetId)}
+                    disabled={index === widgetOrder.length - 1}
+                    aria-label={`Move ${WIDGET_LABELS[widgetId]} down`}
+                    className={`p-1 rounded transition-all ${
+                      index === widgetOrder.length - 1
+                        ? 'text-gray-300 dark:text-dark-subtle cursor-not-allowed'
+                        : 'text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-hover'
+                    }`}
+                  >
+                    <ArrowDown size={12} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.items.map((stat, idx) => (
-          <div
-            key={idx}
-            className="group bg-white dark:bg-dark-card p-6 rounded-xl border border-gray-200 dark:border-dark-border hover:border-gold-300 dark:hover:border-gold-700 hover:shadow-lg hover:shadow-gold-100/50 dark:hover:shadow-gold-900/20 transition-all duration-300 cursor-default"
-          >
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-gold-50 dark:bg-gold-900/30 rounded-xl border border-gold-100 dark:border-gold-800 group-hover:bg-gold-100 dark:group-hover:bg-gold-900/50 group-hover:scale-110 transition-all duration-300">
-                {stat.icon}
+        {stats.items.map((stat, idx) => {
+          const statVisible = isVisible('dashboard', stat.id);
+          if (!statVisible && !customizeMode) return null;
+
+          return (
+            <div
+              key={stat.id}
+              onClick={() => !customizeMode && onNavigate && stat.viewTarget && onNavigate(stat.viewTarget)}
+              className={`relative group bg-white dark:bg-dark-card p-6 rounded-xl border border-gray-200 dark:border-dark-border hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-lg hover:shadow-gray-100/50 dark:hover:shadow-lg dark:hover:shadow-black/20 transition-all duration-300 ${
+                !customizeMode && onNavigate ? 'cursor-pointer' : 'cursor-default'
+              } ${!statVisible ? 'opacity-40' : ''}`}
+            >
+              {/* Customize Mode Overlay */}
+              {customizeMode && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleVisibility('dashboard', stat.id);
+                  }}
+                  className={`absolute top-3 right-3 z-10 p-2 rounded-lg shadow-sm border transition-all ${
+                    statVisible
+                      ? 'bg-white dark:bg-dark-elevated border-gray-200 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-hover text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text'
+                      : 'bg-gray-800 dark:bg-gray-200 border-gray-800 dark:border-gray-200 text-white dark:text-gray-800 hover:bg-gray-700 dark:hover:bg-gray-300'
+                  }`}
+                >
+                  {statVisible ? <Eye size={16} /> : <EyeOff size={16} />}
+                </button>
+              )}
+
+              <div className="flex justify-between items-start mb-4">
+                <div className="p-3 bg-gray-100 dark:bg-dark-elevated rounded-xl border border-gray-200 dark:border-dark-border group-hover:bg-gray-200 dark:group-hover:bg-dark-hover group-hover:scale-110 transition-all duration-300">
+                  {stat.icon}
+                </div>
+                {stat.showProgress && stat.goal && (
+                  <span className="text-xs font-medium text-gray-400 dark:text-dark-muted">
+                    Goal: {stat.label.includes('Revenue') || stat.label.includes('Pipeline') ? `£${stat.goal.toLocaleString()}` : stat.goal}
+                  </span>
+                )}
               </div>
+              <h3 className="text-3xl font-bold text-gray-800 dark:text-dark-text mb-1 tracking-tight">{stat.value}</h3>
+              <p className="text-sm text-gray-500 dark:text-dark-muted font-medium mb-3">{stat.label}</p>
               {stat.showProgress && stat.goal && (
-                <span className="text-xs font-medium text-gray-400 dark:text-dark-muted">
-                  Goal: {stat.label.includes('Revenue') || stat.label.includes('Pipeline') ? `£${stat.goal.toLocaleString()}` : stat.goal}
-                </span>
+                <div className="space-y-1.5">
+                  <div className="h-2 bg-gray-100 dark:bg-dark-elevated rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        stat.progress >= 100 ? 'bg-gray-800 dark:bg-gray-200' : stat.progress >= 75 ? 'bg-gray-600 dark:bg-gray-400' : stat.progress >= 50 ? 'bg-gray-500' : 'bg-gray-400 dark:bg-gray-500'
+                      }`}
+                      style={{ width: `${Math.min(stat.progress, 100)}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className={`text-xs font-semibold ${
+                      stat.progress >= 100 ? 'text-gray-800 dark:text-gray-200' : 'text-gray-500 dark:text-dark-muted'
+                    }`}>
+                      {Math.round(stat.progress)}% of goal
+                    </span>
+                    {stat.progress >= 100 && (
+                      <span className="text-xs font-medium text-gray-800 dark:text-gray-200 flex items-center gap-1">
+                        <CheckSquare size={12} /> Achieved
+                      </span>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
-            <h3 className="text-3xl font-bold text-gray-800 dark:text-dark-text mb-1 tracking-tight">{stat.value}</h3>
-            <p className="text-sm text-gray-500 dark:text-dark-muted font-medium mb-3">{stat.label}</p>
-            {stat.showProgress && stat.goal && (
-              <div className="space-y-1.5">
-                <div className="h-2 bg-gray-100 dark:bg-dark-elevated rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      stat.progress >= 100 ? 'bg-green-500' : stat.progress >= 75 ? 'bg-gold-500' : stat.progress >= 50 ? 'bg-gold-400' : 'bg-gold-300'
-                    }`}
-                    style={{ width: `${Math.min(stat.progress, 100)}%` }}
-                  />
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className={`text-xs font-semibold ${
-                    stat.progress >= 100 ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-dark-muted'
-                  }`}>
-                    {Math.round(stat.progress)}% of goal
-                  </span>
-                  {stat.progress >= 100 && (
-                    <span className="text-xs font-medium text-green-600 dark:text-green-400 flex items-center gap-1">
-                      <CheckSquare size={12} /> Achieved
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Productivity Sections - 3 columns */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Overdue Tasks */}
-        <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-6 hover:shadow-lg hover:shadow-gray-100/50 dark:hover:shadow-none hover:border-gray-300 dark:hover:border-dark-border transition-all duration-300">
+        <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-6 hover:shadow-lg hover:shadow-gray-100/50 dark:hover:shadow-lg dark:hover:shadow-black/20 hover:border-gray-300 dark:hover:border-dark-border transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <AlertTriangle size={18} className="text-red-500 dark:text-red-400" />
-              <h3 className="font-semibold text-red-600 dark:text-red-400">Overdue ({overdueTasks.length})</h3>
+              <AlertTriangle size={18} className="text-red-400 dark:text-red-400" />
+              <h3 className="font-semibold text-gray-700 dark:text-gray-300">Overdue ({overdueTasks.length})</h3>
             </div>
             {onNavigate && (
               <button
                 onClick={() => onNavigate('tasks')}
-                className="text-xs text-gray-400 dark:text-dark-muted hover:text-gold-600 dark:hover:text-gold-400 flex items-center gap-1"
+                className="text-xs text-gray-400 dark:text-dark-muted hover:text-gray-600 dark:hover:text-gray-400 flex items-center gap-1"
               >
                 View All <ArrowRight size={12} />
               </button>
@@ -618,17 +895,18 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
           {overdueTasks.length > 0 ? (
             <div className="space-y-3">
               {overdueTasks.slice(0, 4).map(task => (
-                <div key={task.id} className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <div key={task.id} className="p-3 bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-lg">
                   <div className="flex items-start gap-3">
                     <button
                       onClick={() => toggleTaskComplete(task.id, task.clientId)}
-                      className="mt-0.5 text-red-400 hover:text-red-600 dark:hover:text-red-300"
+                      aria-label={`Mark "${task.title}" as complete`}
+                      className="mt-0.5 text-gray-400 hover:text-green-500 dark:hover:text-green-400"
                     >
                       <Square size={18} />
                     </button>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-800 dark:text-dark-text truncate">{task.title}</p>
-                      <p className="text-xs text-gray-500 dark:text-dark-muted mt-1">
+                      <p className="text-xs text-red-400 dark:text-red-400 mt-1">
                         {task.clientName} • {getDaysOverdue(task.dueDate)}d overdue
                       </p>
                     </div>
@@ -643,21 +921,30 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
               </div>
               <p className="text-sm font-medium text-gray-600 dark:text-dark-text">All caught up!</p>
               <p className="text-xs text-gray-400 dark:text-dark-muted mt-1">No overdue tasks</p>
+              {onNavigate && (
+                <button
+                  onClick={() => onNavigate('tasks')}
+                  className="mt-3 text-xs text-gold-600 dark:text-gold-400 hover:text-gold-700 dark:hover:text-gold-300 font-medium flex items-center gap-1"
+                >
+                  <Plus size={14} />
+                  Create a task
+                </button>
+              )}
             </div>
           )}
         </div>
 
         {/* Today's Agenda */}
-        <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-6 hover:shadow-lg hover:shadow-gray-100/50 dark:hover:shadow-none hover:border-gray-300 dark:hover:border-dark-border transition-all duration-300">
+        <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-6 hover:shadow-lg hover:shadow-gray-100/50 dark:hover:shadow-lg dark:hover:shadow-black/20 hover:border-gray-300 dark:hover:border-dark-border transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <CalendarIcon size={18} className="text-gold-500 dark:text-gold-400" />
+              <CalendarIcon size={18} className="text-gray-600 dark:text-gray-400" />
               <h3 className="font-semibold text-gray-800 dark:text-dark-text">Today's Agenda</h3>
             </div>
             {onNavigate && (
               <button
                 onClick={() => onNavigate('calendar')}
-                className="text-xs text-gray-400 dark:text-dark-muted hover:text-gold-600 dark:hover:text-gold-400 flex items-center gap-1"
+                className="text-xs text-gray-400 dark:text-dark-muted hover:text-gray-600 dark:hover:text-gray-400 flex items-center gap-1"
               >
                 View All <ArrowRight size={12} />
               </button>
@@ -673,7 +960,8 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                   <div key={task.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-dark-elevated">
                     <button
                       onClick={() => toggleTaskComplete(task.id, task.clientId)}
-                      className={task.completed ? 'text-green-500 dark:text-green-400' : 'text-gray-300 dark:text-dark-subtle hover:text-gold-500 dark:hover:text-gold-400'}
+                      aria-label={task.completed ? `Mark "${task.title}" as incomplete` : `Mark "${task.title}" as complete`}
+                      className={task.completed ? 'text-green-500 dark:text-green-400' : 'text-gray-300 dark:text-dark-subtle hover:text-green-500 dark:hover:text-green-400'}
                     >
                       {task.completed ? <CheckSquare size={18} /> : <Square size={18} />}
                     </button>
@@ -684,7 +972,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                       <p className="text-xs text-gray-400 dark:text-dark-muted">{task.clientName}</p>
                     </div>
                     {task.priority === 'high' && (
-                      <Star size={14} className="text-gold-500 fill-gold-500" />
+                      <Star size={14} className="text-amber-500 fill-amber-500" />
                     )}
                   </div>
                 ))}
@@ -699,14 +987,14 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
               <div className="space-y-2">
                 {todaysEvents.slice(0, 3).map(event => (
                   <div key={event.id} className={`p-3 rounded-lg border-l-4 ${
-                    event.type === 'meeting' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500' :
-                    event.type === 'deadline' ? 'bg-red-50 dark:bg-red-900/20 border-red-500' :
-                    'bg-gold-50 dark:bg-gold-900/20 border-gold-500'
+                    event.type === 'meeting' ? 'bg-gray-100 dark:bg-dark-elevated border-gray-800' :
+                    event.type === 'deadline' ? 'bg-gray-50 dark:bg-dark-elevated border-gray-600' :
+                    'bg-gray-50 dark:bg-dark-elevated border-gray-400'
                   }`}>
                     <div className="flex items-center gap-2">
                       <Clock size={14} className="text-gray-400 dark:text-dark-muted" />
                       <span className="text-sm font-medium text-gray-600 dark:text-dark-text">{event.time}</span>
-                      {event.type === 'meeting' && <Video size={14} className="text-blue-500 dark:text-blue-400" />}
+                      {event.type === 'meeting' && <Video size={14} className="text-gray-600 dark:text-gray-400" />}
                     </div>
                     <p className="font-medium text-gray-800 dark:text-dark-text mt-1 truncate">{event.title}</p>
                     <p className="text-xs text-gray-500 dark:text-dark-muted">{event.clientName}</p>
@@ -723,21 +1011,30 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
               </div>
               <p className="text-sm font-medium text-gray-600 dark:text-dark-text">Free day!</p>
               <p className="text-xs text-gray-400 dark:text-dark-muted mt-1">Nothing scheduled for today</p>
+              {onNavigate && (
+                <button
+                  onClick={() => onNavigate('calendar')}
+                  className="mt-3 text-xs text-gold-600 dark:text-gold-400 hover:text-gold-700 dark:hover:text-gold-300 font-medium flex items-center gap-1"
+                >
+                  <Plus size={14} />
+                  Schedule something
+                </button>
+              )}
             </div>
           )}
         </div>
 
         {/* High Priority */}
-        <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-6 hover:shadow-lg hover:shadow-gray-100/50 dark:hover:shadow-none hover:border-gray-300 dark:hover:border-dark-border transition-all duration-300">
+        <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-6 hover:shadow-lg hover:shadow-gray-100/50 dark:hover:shadow-lg dark:hover:shadow-black/20 hover:border-gray-300 dark:hover:border-dark-border transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Star size={18} className="text-gold-500 fill-gold-500" />
+              <Star size={18} className="text-amber-500 fill-amber-500" />
               <h3 className="font-semibold text-gray-800 dark:text-dark-text">High Priority ({highPriorityTasks.length})</h3>
             </div>
             {onNavigate && (
               <button
                 onClick={() => onNavigate('tasks')}
-                className="text-xs text-gray-400 dark:text-dark-muted hover:text-gold-600 dark:hover:text-gold-400 flex items-center gap-1"
+                className="text-xs text-gray-400 dark:text-dark-muted hover:text-gray-600 dark:hover:text-gray-400 flex items-center gap-1"
               >
                 View All <ArrowRight size={12} />
               </button>
@@ -746,10 +1043,11 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
           {highPriorityTasks.length > 0 ? (
             <div className="space-y-2">
               {highPriorityTasks.slice(0, 4).map(task => (
-                <div key={task.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gold-50 dark:hover:bg-gold-900/20">
+                <div key={task.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-dark-elevated">
                   <button
                     onClick={() => toggleTaskComplete(task.id, task.clientId)}
-                    className={task.completed ? 'text-green-500 dark:text-green-400' : 'text-gray-300 dark:text-dark-subtle hover:text-gold-500 dark:hover:text-gold-400'}
+                    aria-label={task.completed ? `Mark "${task.title}" as incomplete` : `Mark "${task.title}" as complete`}
+                    className={task.completed ? 'text-green-500 dark:text-green-400' : 'text-gray-300 dark:text-dark-subtle hover:text-green-500 dark:hover:text-green-400'}
                   >
                     {task.completed ? <CheckSquare size={18} /> : <Square size={18} />}
                   </button>
@@ -762,8 +1060,8 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-8">
-              <div className="p-3 bg-gold-50 dark:bg-gold-900/20 rounded-full mb-3">
-                <Star size={24} className="text-gold-400" />
+              <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-full mb-3">
+                <Star size={24} className="text-green-500 dark:text-green-400" />
               </div>
               <p className="text-sm font-medium text-gray-600 dark:text-dark-text">No urgent tasks</p>
               <p className="text-xs text-gray-400 dark:text-dark-muted mt-1">No high priority items pending</p>
@@ -774,13 +1072,13 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
 
       {/* Pipeline and Recent Clients */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-8 hover:shadow-lg hover:shadow-gray-100/50 dark:hover:shadow-none hover:border-gray-300 dark:hover:border-dark-border transition-all duration-300">
+        <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-8 hover:shadow-lg hover:shadow-gray-100/50 dark:hover:shadow-lg dark:hover:shadow-black/20 hover:border-gray-300 dark:hover:border-dark-border transition-all duration-300">
           <div className="flex justify-between items-center mb-6">
             <h3 className="font-semibold text-gray-800 dark:text-dark-text">Pipeline Overview</h3>
             {onNavigate && (
               <button
                 onClick={() => onNavigate('crm')}
-                className="text-sm text-gold-600 dark:text-gold-400 hover:text-gold-700 dark:hover:text-gold-300 flex items-center gap-1 font-medium"
+                className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1 font-medium"
               >
                 Go to CRM <ArrowRight size={14} />
               </button>
@@ -789,7 +1087,11 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
           {pipelinePreview.length > 0 ? (
             <div className="space-y-4">
               {pipelinePreview.map((item, idx) => (
-                <div key={idx} className="flex items-center gap-4">
+                <div
+                  key={idx}
+                  onClick={() => onNavigate && onNavigate('crm')}
+                  className="flex items-center gap-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-elevated -mx-2 px-2 py-1 rounded-lg transition-colors"
+                >
                   <span className="text-sm text-gray-600 dark:text-dark-muted w-24">{item.stage}</span>
                   <div className="flex-1 bg-gray-100 dark:bg-dark-elevated rounded-full h-3">
                     <div
@@ -808,17 +1110,25 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
               </div>
               <p className="text-sm font-medium text-gray-600 dark:text-dark-text">No pipeline data</p>
               <p className="text-xs text-gray-400 dark:text-dark-muted mt-1">Add contacts to your CRM to see progress</p>
+              {onNavigate && (
+                <button
+                  onClick={() => onNavigate('crm')}
+                  className="mt-3 text-xs text-gold-600 dark:text-gold-400 hover:text-gold-700 dark:hover:text-gold-300 font-medium flex items-center gap-1"
+                >
+                  Go to CRM <ArrowRight size={14} />
+                </button>
+              )}
             </div>
           )}
         </div>
 
-        <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border overflow-hidden hover:shadow-lg hover:shadow-gray-100/50 dark:hover:shadow-none hover:border-gray-300 dark:hover:border-dark-border transition-all duration-300">
+        <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border overflow-hidden hover:shadow-lg hover:shadow-gray-100/50 dark:hover:shadow-lg dark:hover:shadow-black/20 hover:border-gray-300 dark:hover:border-dark-border transition-all duration-300">
           <div className="px-8 py-5 border-b border-gray-100 dark:border-dark-border flex justify-between items-center">
             <h3 className="font-semibold text-gray-800 dark:text-dark-text">Recent Clients</h3>
             {onNavigate && (
               <button
                 onClick={() => onNavigate('clients')}
-                className="text-sm text-gold-600 dark:text-gold-400 hover:text-gold-700 dark:hover:text-gold-300 flex items-center gap-1 font-medium"
+                className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1 font-medium"
               >
                 View All <ArrowRight size={14} />
               </button>
@@ -827,21 +1137,24 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
           {recentClients.length > 0 ? (
             <div className="divide-y divide-gray-100 dark:divide-dark-border">
               {recentClients.slice(0, 4).map((client) => (
-                <div key={client.id} className="px-8 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-dark-elevated transition-colors">
+                <div
+                  key={client.id}
+                  onClick={() => onNavigate && onNavigate('clients')}
+                  className="px-8 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-dark-elevated transition-colors cursor-pointer">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-gold-50 dark:bg-gold-900/30 border border-gold-200 dark:border-gold-800 rounded-full flex items-center justify-center">
-                      <span className="text-gold-700 dark:text-gold-400 font-medium text-sm">{client.name.charAt(0)}</span>
+                    <div className="w-10 h-10 bg-gray-100 dark:bg-dark-elevated border border-gray-200 dark:border-dark-border rounded-full flex items-center justify-center">
+                      <span className="text-gray-700 dark:text-gray-400 font-medium text-sm">{client.name.charAt(0)}</span>
                     </div>
                     <div>
                       <p className="font-medium text-gray-800 dark:text-dark-text">{client.name}</p>
-                      <p className="text-sm text-gray-400 dark:text-dark-muted">{client.template}</p>
+                      <p className="text-sm text-gray-400 dark:text-dark-muted">{client.company || client.template}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className={`text-xs px-2 py-1 rounded-full ${
-                      client.status === 'active' ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' :
-                      client.status === 'paused' ? 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400' :
-                      'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
+                      client.status === 'active' ? 'bg-gray-100 dark:bg-dark-elevated text-gray-700 dark:text-gray-300 border border-gray-800 dark:border-gray-300' :
+                      client.status === 'paused' ? 'bg-gray-50 dark:bg-dark-elevated text-gray-600 dark:text-gray-400 border border-gray-400 dark:border-gray-500' :
+                      'bg-gray-50 dark:bg-dark-elevated text-gray-500 dark:text-gray-500 border border-gray-300 dark:border-gray-600'
                     }`}>
                       {client.status}
                     </span>
@@ -852,8 +1165,8 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-12">
-              <div className="p-3 bg-gold-50 dark:bg-gold-900/20 rounded-full mb-3">
-                <Users size={24} className="text-gold-400" />
+              <div className="p-3 bg-gray-100 dark:bg-dark-elevated rounded-full mb-3">
+                <Users size={24} className="text-gray-500 dark:text-gray-400" />
               </div>
               <p className="text-sm font-medium text-gray-600 dark:text-dark-text">No clients yet</p>
               <p className="text-xs text-gray-400 dark:text-dark-muted mt-1">Add your first client to get started</p>
@@ -863,7 +1176,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
       </div>
 
       {/* Calendar - Full Width at Bottom */}
-      <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-6 hover:shadow-lg hover:shadow-gray-100/50 dark:hover:shadow-none transition-all duration-300">
+      <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-6 hover:shadow-lg hover:shadow-gray-100/50 dark:hover:shadow-lg dark:hover:shadow-black/20 transition-all duration-300">
           {/* Calendar Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
@@ -881,7 +1194,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
               </button>
               <button
                 onClick={goToToday}
-                className="ml-2 px-3 py-1.5 text-sm font-medium text-gold-600 dark:text-gold-400 border border-gold-200 dark:border-gold-700 rounded-lg hover:bg-gold-50 dark:hover:bg-gold-900/20 transition-colors"
+                className="ml-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-elevated transition-colors"
               >
                 Today
               </button>
@@ -933,20 +1246,20 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                       key={idx}
                       onClick={() => setSelectedDay(selectedDay === dateStr ? null : dateStr)}
                       className={`h-20 p-2 border rounded-lg cursor-pointer transition-all ${
-                        isToday ? 'border-gold-400 dark:border-gold-600 bg-gold-50/50 dark:bg-gold-900/20' :
-                        isSelected ? 'border-gold-300 dark:border-gold-700 bg-gold-50/30 dark:bg-gold-900/10' :
+                        isToday ? 'border-gray-800 dark:border-gray-300 bg-gray-100 dark:bg-dark-elevated' :
+                        isSelected ? 'border-gray-400 dark:border-gray-500 bg-gray-50 dark:bg-dark-elevated' :
                         'border-gray-100 dark:border-dark-border hover:border-gray-200 dark:hover:border-dark-hover hover:bg-gray-50 dark:hover:bg-dark-elevated'
                       }`}
                     >
-                      <span className={`text-sm ${isToday ? 'font-bold text-gold-600 dark:text-gold-400' : 'text-gray-700 dark:text-dark-text'}`}>
+                      <span className={`text-sm ${isToday ? 'font-bold text-gray-800 dark:text-gray-200' : 'text-gray-700 dark:text-dark-text'}`}>
                         {date.getDate()}
                       </span>
                       <div className="flex gap-1 mt-1 flex-wrap">
-                        {hasOverdue && <span className="w-2 h-2 rounded-full bg-red-500" />}
+                        {hasOverdue && <span className="w-2 h-2 rounded-full bg-red-400" />}
                         {tasks.filter(t => !t.completed && t.dueDate >= today).length > 0 && (
-                          <span className="w-2 h-2 rounded-full bg-gold-500" />
+                          <span className="w-2 h-2 rounded-full bg-blue-400" />
                         )}
-                        {events.length > 0 && <span className="w-2 h-2 rounded-full bg-blue-500" />}
+                        {events.length > 0 && <span className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500" />}
                       </div>
                     </div>
                   );
@@ -968,14 +1281,14 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                       <div className="space-y-2">
                         {tasks.map(task => (
                           <div key={task.id} className="flex items-center gap-2 text-sm">
-                            <span className={`w-2 h-2 rounded-full ${task.completed ? 'bg-green-500' : task.dueDate < today ? 'bg-red-500' : 'bg-gold-500'}`} />
+                            <span className={`w-2 h-2 rounded-full ${task.completed ? 'bg-green-400' : task.dueDate < today ? 'bg-red-400' : 'bg-blue-400'}`} />
                             <span className={task.completed ? 'line-through text-gray-400 dark:text-dark-subtle' : 'text-gray-700 dark:text-dark-text'}>{task.title}</span>
                             <span className="text-gray-400 dark:text-dark-muted">({task.clientName})</span>
                           </div>
                         ))}
                         {events.map(event => (
                           <div key={event.id} className="flex items-center gap-2 text-sm text-gray-700 dark:text-dark-text">
-                            <span className="w-2 h-2 rounded-full bg-blue-500" />
+                            <span className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500" />
                             <span>{event.time}</span>
                             <span>{event.title}</span>
                             <span className="text-gray-400 dark:text-dark-muted">({event.clientName})</span>
@@ -1000,18 +1313,18 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                   const isToday = dateStr === today;
 
                   return (
-                    <div key={idx} className={`min-h-[300px] border rounded-lg ${isToday ? 'border-gold-400 dark:border-gold-600 bg-gold-50/30 dark:bg-gold-900/10' : 'border-gray-200 dark:border-dark-border'}`}>
-                      <div className={`text-center py-2 border-b ${isToday ? 'border-gold-200 dark:border-gold-700 bg-gold-100/50 dark:bg-gold-900/20' : 'border-gray-100 dark:border-dark-border bg-gray-50 dark:bg-dark-elevated'}`}>
+                    <div key={idx} className={`min-h-[300px] border rounded-lg ${isToday ? 'border-gray-800 dark:border-gray-300 bg-gray-50 dark:bg-dark-elevated' : 'border-gray-200 dark:border-dark-border'}`}>
+                      <div className={`text-center py-2 border-b ${isToday ? 'border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-dark-elevated' : 'border-gray-100 dark:border-dark-border bg-gray-50 dark:bg-dark-elevated'}`}>
                         <p className="text-xs text-gray-500 dark:text-dark-muted">{date.toLocaleDateString('en-GB', { weekday: 'short' })}</p>
-                        <p className={`text-lg font-semibold ${isToday ? 'text-gold-600 dark:text-gold-400' : 'text-gray-700 dark:text-dark-text'}`}>{date.getDate()}</p>
+                        <p className={`text-lg font-semibold ${isToday ? 'text-gray-800 dark:text-gray-200' : 'text-gray-700 dark:text-dark-text'}`}>{date.getDate()}</p>
                       </div>
                       <div className="p-2 space-y-1">
                         {/* Events with time */}
                         {events.sort((a, b) => a.time.localeCompare(b.time)).map(event => (
                           <div key={event.id} className={`p-1.5 rounded text-xs ${
-                            event.type === 'meeting' ? 'bg-blue-100 dark:bg-blue-900/30 border-l-2 border-blue-500' :
-                            event.type === 'deadline' ? 'bg-red-100 dark:bg-red-900/30 border-l-2 border-red-500' :
-                            'bg-gold-100 dark:bg-gold-900/30 border-l-2 border-gold-500'
+                            event.type === 'meeting' ? 'bg-gray-100 dark:bg-dark-elevated border-l-2 border-gray-800 dark:border-gray-300' :
+                            event.type === 'deadline' ? 'bg-gray-100 dark:bg-dark-elevated border-l-2 border-gray-600' :
+                            'bg-gray-50 dark:bg-dark-elevated border-l-2 border-gray-400'
                           }`}>
                             <p className="font-medium text-gray-500 dark:text-dark-muted">{event.time}</p>
                             <p className="text-gray-700 dark:text-dark-text truncate">{event.title}</p>
@@ -1020,16 +1333,17 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                         {/* Tasks */}
                         {tasks.map(task => (
                           <div key={task.id} className={`p-1.5 rounded text-xs flex items-center gap-1 ${
-                            task.completed ? 'bg-green-50 dark:bg-green-900/20' :
-                            task.dueDate < today ? 'bg-red-50 dark:bg-red-900/20' :
-                            task.priority === 'high' ? 'bg-gold-50 dark:bg-gold-900/20' : 'bg-gray-50 dark:bg-dark-elevated'
+                            task.completed ? 'bg-green-50/50 dark:bg-green-900/10' :
+                            task.dueDate < today ? 'bg-red-50/50 dark:bg-red-900/10 border-l-2 border-red-400' :
+                            task.priority === 'high' ? 'bg-amber-50/50 dark:bg-amber-900/10 border-l-2 border-amber-400' : 'bg-gray-50 dark:bg-dark-elevated'
                           }`}>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 toggleTaskComplete(task.id, task.clientId);
                               }}
-                              className={task.completed ? 'text-green-500 dark:text-green-400' : 'text-gray-300 dark:text-dark-subtle'}
+                              aria-label={task.completed ? `Mark "${task.title}" as incomplete` : `Mark "${task.title}" as complete`}
+                              className={task.completed ? 'text-green-500 dark:text-green-400' : 'text-gray-300 dark:text-dark-subtle hover:text-green-500'}
                             >
                               {task.completed ? <CheckSquare size={12} /> : <Square size={12} />}
                             </button>
@@ -1075,8 +1389,8 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                 {/* Title Section */}
                 <div className="px-6 py-6 border-b border-gray-100 dark:border-dark-border">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-gold-100 dark:bg-gold-900/30 rounded-xl flex items-center justify-center">
-                      <CheckSquare size={24} className="text-gold-600 dark:text-gold-400" />
+                    <div className="w-12 h-12 bg-gray-100 dark:bg-dark-elevated rounded-xl flex items-center justify-center">
+                      <CheckSquare size={24} className="text-gray-600 dark:text-gray-400" />
                     </div>
                     <div className="flex-1">
                       <input
@@ -1106,7 +1420,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                       <select
                         value={newTask.clientId}
                         onChange={(e) => { setNewTask({ ...newTask, clientId: e.target.value }); setTaskErrors({ ...taskErrors, clientId: '' }); }}
-                        className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white dark:bg-dark-elevated dark:text-dark-text transition-colors ${taskErrors.clientId ? 'border-red-300 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-dark-border'}`}
+                        className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 bg-white dark:bg-dark-elevated dark:text-dark-text transition-colors ${taskErrors.clientId ? 'border-red-300 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-dark-border'}`}
                       >
                         <option value="">Select client</option>
                         {clients.map(client => (
@@ -1123,7 +1437,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                         type="date"
                         value={newTask.dueDate}
                         onChange={(e) => { setNewTask({ ...newTask, dueDate: e.target.value }); setTaskErrors({ ...taskErrors, dueDate: '' }); }}
-                        className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white dark:bg-dark-elevated dark:text-dark-text transition-colors ${taskErrors.dueDate ? 'border-red-300 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-dark-border'}`}
+                        className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 bg-white dark:bg-dark-elevated dark:text-dark-text transition-colors ${taskErrors.dueDate ? 'border-red-300 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-dark-border'}`}
                       />
                       {taskErrors.dueDate && <p className="text-xs text-red-500 mt-1">{taskErrors.dueDate}</p>}
                     </div>
@@ -1141,10 +1455,10 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                       <button
                         key={p}
                         onClick={() => setNewTask({ ...newTask, priority: p })}
-                        className={`flex-1 px-4 py-3 text-sm font-medium rounded-lg transition-colors capitalize ${
+                        className={`flex-1 px-4 py-3 text-sm font-medium rounded-lg transition-colors capitalize border ${
                           newTask.priority === p
-                            ? p === 'high' ? 'bg-red-500 text-white' : p === 'medium' ? 'bg-gold-500 text-white' : 'bg-blue-500 text-white'
-                            : 'bg-gray-100 dark:bg-dark-hover text-gray-600 dark:text-dark-muted hover:bg-gray-200 dark:hover:bg-dark-border'
+                            ? 'bg-gray-100 dark:bg-dark-elevated text-gray-800 dark:text-gray-200 border-gold-500'
+                            : 'bg-gray-100 dark:bg-dark-hover text-gray-600 dark:text-dark-muted border-transparent hover:bg-gray-200 dark:hover:bg-dark-border'
                         }`}
                       >
                         {p}
@@ -1155,8 +1469,8 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
 
                 {/* Info Box */}
                 <div className="px-6 py-5">
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-4">
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                  <div className="bg-gray-100 dark:bg-dark-elevated border border-gray-200 dark:border-dark-border rounded-xl p-4">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       Tasks will appear in your calendar and can be tracked across the dashboard, tasks view, and client work sections.
                     </p>
                   </div>
@@ -1173,7 +1487,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                 </button>
                 <button
                   onClick={handleAddTask}
-                  className="px-6 py-2.5 bg-gold-500 text-white rounded-xl font-semibold hover:bg-gold-600 active:scale-[0.98] transition-all duration-150 flex items-center gap-2 shadow-sm hover:shadow-md hover:shadow-gold-200/50"
+                  className="px-6 py-2.5 bg-gold-500 text-white rounded-xl font-semibold hover:bg-gold-600 active:scale-[0.98] transition-all duration-150 flex items-center gap-2 shadow-sm hover:shadow-md hover:shadow-gold-200/50 dark:hover:shadow-gold-900/20"
                 >
                   <Plus size={18} strokeWidth={2.5} />
                   Add Task
@@ -1209,8 +1523,8 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                 {/* Title Section */}
                 <div className="px-6 py-6 border-b border-gray-100 dark:border-dark-border">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-                      <CalendarIcon size={24} className="text-blue-600 dark:text-blue-400" />
+                    <div className="w-12 h-12 bg-gray-100 dark:bg-dark-elevated rounded-xl flex items-center justify-center">
+                      <CalendarIcon size={24} className="text-gray-600 dark:text-gray-400" />
                     </div>
                     <div className="flex-1">
                       <input
@@ -1241,10 +1555,10 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                       <button
                         key={t.value}
                         onClick={() => setNewEvent({ ...newEvent, type: t.value })}
-                        className={`flex-1 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                        className={`flex-1 px-4 py-3 text-sm font-medium rounded-lg transition-colors border ${
                           newEvent.type === t.value
-                            ? t.color === 'blue' ? 'bg-blue-500 text-white' : t.color === 'red' ? 'bg-red-500 text-white' : 'bg-purple-500 text-white'
-                            : 'bg-gray-100 dark:bg-dark-hover text-gray-600 dark:text-dark-muted hover:bg-gray-200 dark:hover:bg-dark-border'
+                            ? 'bg-gray-100 dark:bg-dark-elevated text-gray-800 dark:text-gray-200 border-gold-500'
+                            : 'bg-gray-100 dark:bg-dark-hover text-gray-600 dark:text-dark-muted border-transparent hover:bg-gray-200 dark:hover:bg-dark-border'
                         }`}
                       >
                         {t.label}
@@ -1267,7 +1581,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                       <select
                         value={newEvent.clientId}
                         onChange={(e) => { setNewEvent({ ...newEvent, clientId: e.target.value }); setEventErrors({ ...eventErrors, clientId: '' }); }}
-                        className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white dark:bg-dark-elevated dark:text-dark-text transition-colors ${eventErrors.clientId ? 'border-red-300 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-dark-border'}`}
+                        className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 bg-white dark:bg-dark-elevated dark:text-dark-text transition-colors ${eventErrors.clientId ? 'border-red-300 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-dark-border'}`}
                       >
                         <option value="">Select client</option>
                         {clients.map(client => (
@@ -1285,7 +1599,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                           type="date"
                           value={newEvent.date}
                           onChange={(e) => { setNewEvent({ ...newEvent, date: e.target.value }); setEventErrors({ ...eventErrors, date: '' }); }}
-                          className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white dark:bg-dark-elevated dark:text-dark-text transition-colors ${eventErrors.date ? 'border-red-300 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-dark-border'}`}
+                          className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 bg-white dark:bg-dark-elevated dark:text-dark-text transition-colors ${eventErrors.date ? 'border-red-300 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-dark-border'}`}
                         />
                         {eventErrors.date && <p className="text-xs text-red-500 mt-1">{eventErrors.date}</p>}
                       </div>
@@ -1297,7 +1611,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                           type="time"
                           value={newEvent.time}
                           onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
-                          className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 bg-white dark:bg-dark-elevated dark:text-dark-text transition-colors"
+                          className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 bg-white dark:bg-dark-elevated dark:text-dark-text transition-colors"
                         />
                       </div>
                     </div>
@@ -1306,8 +1620,8 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
 
                 {/* Info Box */}
                 <div className="px-6 py-5">
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-4">
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                  <div className="bg-gray-100 dark:bg-dark-elevated border border-gray-200 dark:border-dark-border rounded-xl p-4">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       Events will appear in your calendar and Today's Agenda on the dashboard.
                     </p>
                   </div>
@@ -1324,7 +1638,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                 </button>
                 <button
                   onClick={handleAddEvent}
-                  className="px-6 py-2.5 bg-gold-500 text-white rounded-xl font-semibold hover:bg-gold-600 active:scale-[0.98] transition-all duration-150 flex items-center gap-2 shadow-sm hover:shadow-md hover:shadow-gold-200/50"
+                  className="px-6 py-2.5 bg-gold-500 text-white rounded-xl font-semibold hover:bg-gold-600 active:scale-[0.98] transition-all duration-150 flex items-center gap-2 shadow-sm hover:shadow-md hover:shadow-gold-200/50 dark:hover:shadow-gold-900/20"
                 >
                   <Plus size={18} strokeWidth={2.5} />
                   Add Event
@@ -1345,8 +1659,8 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-dark-border">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-gold-100 dark:bg-gold-900/30 rounded-xl">
-                  <Target size={20} className="text-gold-600 dark:text-gold-400" />
+                <div className="p-2 bg-gray-100 dark:bg-dark-elevated rounded-xl">
+                  <Target size={20} className="text-gray-600 dark:text-gray-400" />
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-gray-800 dark:text-dark-text">Dashboard Goals</h2>
@@ -1366,7 +1680,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
               {/* Total Clients Goal */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-dark-text mb-2">
-                  <Users size={16} className="text-gold-500" />
+                  <Users size={16} className="text-gray-500" />
                   Total Clients Goal
                 </label>
                 <input
@@ -1374,7 +1688,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                   min="0"
                   value={editingGoals.totalClients}
                   onChange={(e) => setEditingGoals({ ...editingGoals, totalClients: parseInt(e.target.value) || 0 })}
-                  className="w-full px-4 py-3 border border-gray-200 dark:border-dark-border rounded-xl bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 transition-colors"
+                  className="w-full px-4 py-3 border border-gray-200 dark:border-dark-border rounded-xl bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-colors"
                   placeholder="e.g., 20"
                 />
                 <p className="text-xs text-gray-400 dark:text-dark-muted mt-1.5">Current: {stats.raw.totalClients} clients</p>
@@ -1383,7 +1697,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
               {/* Monthly Revenue Goal */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-dark-text mb-2">
-                  <DollarSign size={16} className="text-gold-500" />
+                  <DollarSign size={16} className="text-gray-500" />
                   Monthly Revenue Goal
                 </label>
                 <div className="relative">
@@ -1394,7 +1708,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                     step="100"
                     value={editingGoals.monthlyRevenue}
                     onChange={(e) => setEditingGoals({ ...editingGoals, monthlyRevenue: parseInt(e.target.value) || 0 })}
-                    className="w-full pl-8 pr-4 py-3 border border-gray-200 dark:border-dark-border rounded-xl bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 transition-colors"
+                    className="w-full pl-8 pr-4 py-3 border border-gray-200 dark:border-dark-border rounded-xl bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-colors"
                     placeholder="e.g., 10000"
                   />
                 </div>
@@ -1404,7 +1718,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
               {/* Yearly Revenue Goal */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-dark-text mb-2">
-                  <TrendingUp size={16} className="text-gold-500" />
+                  <TrendingUp size={16} className="text-gray-500" />
                   Yearly Revenue Goal
                 </label>
                 <div className="relative">
@@ -1415,7 +1729,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                     step="1000"
                     value={editingGoals.yearlyRevenue}
                     onChange={(e) => setEditingGoals({ ...editingGoals, yearlyRevenue: parseInt(e.target.value) || 0 })}
-                    className="w-full pl-8 pr-4 py-3 border border-gray-200 dark:border-dark-border rounded-xl bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 transition-colors"
+                    className="w-full pl-8 pr-4 py-3 border border-gray-200 dark:border-dark-border rounded-xl bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-colors"
                     placeholder="e.g., 120000"
                   />
                 </div>
@@ -1425,7 +1739,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
               {/* Pipeline Value Goal */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-dark-text mb-2">
-                  <Briefcase size={16} className="text-gold-500" />
+                  <Briefcase size={16} className="text-gray-500" />
                   Pipeline Value Goal
                 </label>
                 <div className="relative">
@@ -1436,7 +1750,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                     step="1000"
                     value={editingGoals.pipelineValue}
                     onChange={(e) => setEditingGoals({ ...editingGoals, pipelineValue: parseInt(e.target.value) || 0 })}
-                    className="w-full pl-8 pr-4 py-3 border border-gray-200 dark:border-dark-border rounded-xl bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400 transition-colors"
+                    className="w-full pl-8 pr-4 py-3 border border-gray-200 dark:border-dark-border rounded-xl bg-white dark:bg-dark-elevated text-gray-800 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-colors"
                     placeholder="e.g., 50000"
                   />
                 </div>
@@ -1444,8 +1758,8 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
               </div>
 
               {/* Tip */}
-              <div className="bg-gold-50 dark:bg-gold-900/20 border border-gold-100 dark:border-gold-800 rounded-xl p-4">
-                <p className="text-sm text-gold-700 dark:text-gold-300">
+              <div className="bg-gray-100 dark:bg-dark-elevated border border-gray-200 dark:border-dark-border rounded-xl p-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   Goals help you track business growth. Progress bars on the dashboard will show how close you are to achieving each target.
                 </p>
               </div>
@@ -1468,7 +1782,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                 </button>
                 <button
                   onClick={handleSaveGoals}
-                  className="px-6 py-2.5 bg-gold-500 text-white rounded-xl font-semibold hover:bg-gold-600 active:scale-[0.98] transition-all duration-150 flex items-center gap-2 shadow-sm hover:shadow-md hover:shadow-gold-200/50"
+                  className="px-6 py-2.5 bg-gold-500 text-white rounded-xl font-semibold hover:bg-gold-600 active:scale-[0.98] transition-all duration-150 flex items-center gap-2 shadow-sm hover:shadow-md hover:shadow-gold-200/50 dark:hover:shadow-gold-900/20"
                 >
                   <Target size={16} />
                   Save Goals

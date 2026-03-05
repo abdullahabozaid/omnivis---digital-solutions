@@ -92,8 +92,8 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
           notifications_client_updates: true,
         };
 
-        const { data: newSettings } = await supabase
-          .from('user_settings')
+        const { data: newSettings } = await (supabase
+          .from('user_settings') as any)
           .insert(defaultSettings)
           .select()
           .single();
@@ -122,8 +122,8 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
           pipeline_value: 50000,
         };
 
-        const { data: newGoals } = await supabase
-          .from('dashboard_goals')
+        const { data: newGoals } = await (supabase
+          .from('dashboard_goals') as any)
           .insert(defaultGoals)
           .select()
           .single();
@@ -142,8 +142,8 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
     async (data: Partial<UserSettings>) => {
       if (!user || !settings) return;
 
-      const { data: updatedSettings, error } = await supabase
-        .from('user_settings')
+      const { data: updatedSettings, error } = await (supabase
+        .from('user_settings') as any)
         .update(data)
         .eq('id', user.id)
         .select()
@@ -161,8 +161,8 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
     async (data: Partial<DashboardGoals>) => {
       if (!user || !goals) return;
 
-      const { data: updatedGoals, error } = await supabase
-        .from('dashboard_goals')
+      const { data: updatedGoals, error } = await (supabase
+        .from('dashboard_goals') as any)
         .update(data)
         .eq('user_id', user.id)
         .select()

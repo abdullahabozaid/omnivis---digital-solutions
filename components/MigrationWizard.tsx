@@ -55,7 +55,7 @@ export function MigrationWizard({ onComplete, onSkip }: MigrationWizardProps) {
 
   if (!isSupabaseConfigured()) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Supabase Not Configured</h2>
           <p className="text-gray-600 mb-6">
@@ -78,7 +78,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key`}
 
   if (!hasData) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">No Data to Migrate</h2>
           <p className="text-gray-600 mb-6">
@@ -96,7 +96,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key`}
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 p-6">
         {step === 'check' && (
           <>
@@ -201,10 +201,10 @@ VITE_SUPABASE_ANON_KEY=your-anon-key`}
               <h3 className="text-sm font-medium text-gray-700 mb-3">Migrated Successfully</h3>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 {Object.entries(result.migrated).map(([key, count]) => (
-                  count > 0 && (
+                  (count as number) > 0 && (
                     <div key={key} className="flex justify-between">
                       <span className="text-gray-600 capitalize">{key}</span>
-                      <span className="font-medium text-green-600">{count}</span>
+                      <span className="font-medium text-green-600">{count as number}</span>
                     </div>
                   )
                 ))}

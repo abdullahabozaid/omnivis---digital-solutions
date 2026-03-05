@@ -68,7 +68,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, onNavi
     { id: 'nav-dashboard', type: 'view', title: 'Dashboard', subtitle: 'Go to Dashboard', icon: 'Layout' },
     { id: 'nav-clients', type: 'view', title: 'Clients', subtitle: 'Go to Clients', icon: 'Users' },
     { id: 'nav-crm', type: 'view', title: 'CRM Pipeline', subtitle: 'Go to CRM Pipeline', icon: 'TrendingUp' },
-    { id: 'nav-templates', type: 'view', title: 'Packages', subtitle: 'Go to Packages', icon: 'FileText' },
+    { id: 'nav-templates', type: 'view', title: 'Snapshots', subtitle: 'Go to Snapshots', icon: 'FileText' },
     { id: 'nav-clientwork', type: 'view', title: 'Client Work', subtitle: 'Go to Client Work', icon: 'Briefcase' },
     { id: 'nav-calendar', type: 'view', title: 'Calendar', subtitle: 'Go to Calendar', icon: 'Calendar' },
     { id: 'nav-tasks', type: 'view', title: 'Tasks', subtitle: 'Go to Tasks', icon: 'CheckSquare' },
@@ -272,7 +272,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, onNavi
         >
           {/* Search Input */}
           <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 dark:border-dark-border bg-gray-50/50 dark:bg-dark-hover/50">
-            <Search size={20} className="text-gold-500" />
+            <Search size={20} className="text-gray-500" />
             <input
               ref={inputRef}
               type="text"
@@ -308,6 +308,35 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, onNavi
               </div>
             ) : (
               <>
+                {/* Recent Searches */}
+                {!query && recentSearches.length > 0 && (
+                  <>
+                    <div className="px-4 py-2 text-xs font-semibold text-gray-400 dark:text-dark-muted uppercase tracking-wider bg-gray-50 dark:bg-dark-hover flex items-center justify-between">
+                      <span>Recent Searches</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRecentSearches([]);
+                          localStorage.removeItem('tawfeeq_recent_searches');
+                        }}
+                        className="text-[10px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    {recentSearches.slice(0, 3).map((recent) => (
+                      <button
+                        key={recent.id}
+                        onClick={() => setQuery(recent.query)}
+                        className="w-full px-5 py-2.5 flex items-center gap-3 text-left hover:bg-gray-50 dark:hover:bg-dark-hover transition-colors"
+                      >
+                        <Clock size={16} className="text-gray-400 dark:text-dark-muted" />
+                        <span className="text-sm text-gray-600 dark:text-dark-text">{recent.query}</span>
+                      </button>
+                    ))}
+                  </>
+                )}
+
                 {/* Group by type */}
                 {!query && (
                   <div className="px-4 py-2 text-xs font-semibold text-gray-400 dark:text-dark-muted uppercase tracking-wider bg-gray-50 dark:bg-dark-hover">
@@ -327,12 +356,12 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, onNavi
                       onClick={() => handleSelect(result)}
                       className={`w-full px-5 py-3 flex items-center gap-4 text-left transition-colors ${
                         actualIndex === selectedIndex
-                          ? 'bg-gold-50 dark:bg-gold-900/20 border-l-4 border-gold-500'
+                          ? 'bg-gray-100 dark:bg-dark-elevated border-l-4 border-gray-800 dark:border-gray-300'
                           : 'hover:bg-gray-50 dark:hover:bg-dark-hover border-l-4 border-transparent'
                       }`}
                     >
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        actualIndex === selectedIndex ? 'bg-gold-100 dark:bg-gold-800/40 text-gold-600 dark:text-gold-400' : 'bg-gray-100 dark:bg-dark-hover text-gray-500 dark:text-dark-muted'
+                        actualIndex === selectedIndex ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200' : 'bg-gray-100 dark:bg-dark-hover text-gray-500 dark:text-dark-muted'
                       }`}>
                         {getIcon(result.icon || 'Layout')}
                       </div>
@@ -343,7 +372,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, onNavi
                         )}
                       </div>
                       <ArrowRight size={16} className={`${
-                        actualIndex === selectedIndex ? 'text-gold-500' : 'text-gray-300 dark:text-dark-muted'
+                        actualIndex === selectedIndex ? 'text-gray-600 dark:text-gray-400' : 'text-gray-300 dark:text-dark-muted'
                       }`} />
                     </button>
                   );
@@ -362,12 +391,12 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, onNavi
                       onClick={() => handleSelect(result)}
                       className={`w-full px-5 py-3 flex items-center gap-4 text-left transition-colors ${
                         actualIndex === selectedIndex
-                          ? 'bg-gold-50 dark:bg-gold-900/20 border-l-4 border-gold-500'
+                          ? 'bg-gray-100 dark:bg-dark-elevated border-l-4 border-gray-800 dark:border-gray-300'
                           : 'hover:bg-gray-50 dark:hover:bg-dark-hover border-l-4 border-transparent'
                       }`}
                     >
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        actualIndex === selectedIndex ? 'bg-gold-100 dark:bg-gold-800/40 text-gold-600 dark:text-gold-400' : 'bg-gray-100 dark:bg-dark-hover text-gray-500 dark:text-dark-muted'
+                        actualIndex === selectedIndex ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200' : 'bg-gray-100 dark:bg-dark-hover text-gray-500 dark:text-dark-muted'
                       }`}>
                         {getIcon(result.icon || 'Layout')}
                       </div>
@@ -378,7 +407,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, onNavi
                         )}
                       </div>
                       <ArrowRight size={16} className={`${
-                        actualIndex === selectedIndex ? 'text-gold-500' : 'text-gray-300 dark:text-dark-muted'
+                        actualIndex === selectedIndex ? 'text-gray-600 dark:text-gray-400' : 'text-gray-300 dark:text-dark-muted'
                       }`} />
                     </button>
                   );
@@ -392,12 +421,12 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, onNavi
                       onClick={() => handleSelect(result)}
                       className={`w-full px-5 py-3 flex items-center gap-4 text-left transition-colors ${
                         actualIndex === selectedIndex
-                          ? 'bg-gold-50 dark:bg-gold-900/20 border-l-4 border-gold-500'
+                          ? 'bg-gray-100 dark:bg-dark-elevated border-l-4 border-gray-800 dark:border-gray-300'
                           : 'hover:bg-gray-50 dark:hover:bg-dark-hover border-l-4 border-transparent'
                       }`}
                     >
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        actualIndex === selectedIndex ? 'bg-gold-100 dark:bg-gold-800/40 text-gold-600 dark:text-gold-400' : 'bg-gray-100 dark:bg-dark-hover text-gray-500 dark:text-dark-muted'
+                        actualIndex === selectedIndex ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200' : 'bg-gray-100 dark:bg-dark-hover text-gray-500 dark:text-dark-muted'
                       }`}>
                         {getIcon(result.icon || 'Layout')}
                       </div>
@@ -408,7 +437,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, onNavi
                         )}
                       </div>
                       <ArrowRight size={16} className={`${
-                        actualIndex === selectedIndex ? 'text-gold-500' : 'text-gray-300 dark:text-dark-muted'
+                        actualIndex === selectedIndex ? 'text-gray-600 dark:text-gray-400' : 'text-gray-300 dark:text-dark-muted'
                       }`} />
                     </button>
                   );

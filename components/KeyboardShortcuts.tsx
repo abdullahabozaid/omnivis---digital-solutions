@@ -104,6 +104,22 @@ export const KeyboardShortcutsProvider: React.FC<KeyboardShortcutsProviderProps>
             e.preventDefault();
             onNavigate('clientwork');
             break;
+          case 'l':
+            e.preventDefault();
+            onNavigate('leads');
+            break;
+          case 'b':
+            e.preventDefault();
+            onNavigate('websites');
+            break;
+          case 'n':
+            e.preventDefault();
+            onNavigate('analytics');
+            break;
+          case 's':
+            e.preventDefault();
+            onNavigate('settings');
+            break;
         }
         return;
       }
@@ -150,8 +166,8 @@ export const KeyboardShortcutsProvider: React.FC<KeyboardShortcutsProviderProps>
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-hover">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-gold-100 dark:bg-gold-900/30 rounded-lg">
-                    <Keyboard size={20} className="text-gold-600 dark:text-gold-400" />
+                  <div className="p-2 bg-gray-100 dark:bg-dark-elevated rounded-lg">
+                    <Keyboard size={20} className="text-gray-600 dark:text-gray-400" />
                   </div>
                   <h2 className="text-lg font-semibold text-gray-800 dark:text-dark-text">Keyboard Shortcuts</h2>
                 </div>
@@ -176,8 +192,12 @@ export const KeyboardShortcutsProvider: React.FC<KeyboardShortcutsProviderProps>
                     <ShortcutRow keys={['G', 'R']} description="Go to CRM" />
                     <ShortcutRow keys={['G', 'T']} description="Go to Tasks" />
                     <ShortcutRow keys={['G', 'A']} description="Go to Calendar" />
-                    <ShortcutRow keys={['G', 'P']} description="Go to Packages" />
+                    <ShortcutRow keys={['G', 'P']} description="Go to Snapshots" />
                     <ShortcutRow keys={['G', 'W']} description="Go to Client Work" />
+                    <ShortcutRow keys={['G', 'L']} description="Go to Leads" />
+                    <ShortcutRow keys={['G', 'B']} description="Go to Websites" />
+                    <ShortcutRow keys={['G', 'N']} description="Go to Analytics" />
+                    <ShortcutRow keys={['G', 'S']} description="Go to Settings" />
                   </div>
                 </div>
 
@@ -201,15 +221,15 @@ export const KeyboardShortcutsProvider: React.FC<KeyboardShortcutsProviderProps>
                   </h3>
                   <ul className="text-sm text-gray-600 dark:text-dark-muted space-y-1.5">
                     <li className="flex items-start gap-2">
-                      <span className="text-gold-500 mt-0.5">-</span>
+                      <span className="text-gray-500 mt-0.5">-</span>
                       <span>Press <kbd className="px-1.5 py-0.5 bg-white dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded text-xs font-medium">G</kbd> then a letter to navigate (e.g., <kbd className="px-1.5 py-0.5 bg-white dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded text-xs font-medium">G</kbd> <kbd className="px-1.5 py-0.5 bg-white dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded text-xs font-medium">C</kbd> for Clients)</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <span className="text-gold-500 mt-0.5">-</span>
+                      <span className="text-gray-500 mt-0.5">-</span>
                       <span>Use the command palette (<kbd className="px-1.5 py-0.5 bg-white dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded text-xs font-medium">⌘K</kbd>) to quickly search and navigate</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <span className="text-gold-500 mt-0.5">-</span>
+                      <span className="text-gray-500 mt-0.5">-</span>
                       <span>Shortcuts are disabled when typing in input fields</span>
                     </li>
                   </ul>

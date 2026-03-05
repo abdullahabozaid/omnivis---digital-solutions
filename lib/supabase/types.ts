@@ -447,6 +447,29 @@ export interface Database {
         };
         Update: Partial<Database['public']['Tables']['snapshot_copy_blocks']['Insert']>;
       };
+      leads: {
+        Row: {
+          id: string;
+          name: string;
+          email: string | null;
+          phone: string | null;
+          company: string | null;
+          website: string | null;
+          website_rating: number | null;
+          industry: string;
+          status: string;
+          notes: string | null;
+          source: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['leads']['Row'], 'id' | 'created_at' | 'updated_at'> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['leads']['Insert']>;
+      };
     };
     Views: {};
     Functions: {};
@@ -478,6 +501,7 @@ export type SnapshotForm = Database['public']['Tables']['snapshot_forms']['Row']
 export type SnapshotAutomation = Database['public']['Tables']['snapshot_automations']['Row'];
 export type SnapshotPipeline = Database['public']['Tables']['snapshot_pipelines']['Row'];
 export type SnapshotCopyBlock = Database['public']['Tables']['snapshot_copy_blocks']['Row'];
+export type Lead = Database['public']['Tables']['leads']['Row'];
 
 // Extended types with relations
 export interface ClientWithTags extends Client {

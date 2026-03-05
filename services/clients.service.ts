@@ -3,7 +3,7 @@ import { BaseService, ServiceResult, ServiceListResult, ListOptions } from './ba
 import type { Client, ClientWithTags, Tag } from '../lib/supabase/types';
 import { offlineQueue, isOnline } from '../utils/offline-queue';
 
-class ClientsService extends BaseService<Client> {
+export class ClientsService extends BaseService<Client> {
   constructor() {
     super('clients', 'id');
   }
@@ -38,7 +38,7 @@ class ClientsService extends BaseService<Client> {
     }
 
     // Fetch tags separately
-    const tagIds = (data.client_tags as { tag_id: string }[])?.map(ct => ct.tag_id) || [];
+    const tagIds = ((data as any).client_tags as { tag_id: string }[])?.map(ct => ct.tag_id) || [];
     let tags: Tag[] = [];
 
     if (tagIds.length > 0) {
@@ -49,7 +49,7 @@ class ClientsService extends BaseService<Client> {
       tags = (tagsData || []) as Tag[];
     }
 
-    const { client_tags, ...clientData } = data;
+    const { client_tags, ...clientData } = data as any;
     return {
       data: { ...clientData, tags } as ClientWithTags,
       error: null,
@@ -121,7 +121,7 @@ class ClientsService extends BaseService<Client> {
         .from('tags')
         .select('*')
         .in('id', Array.from(allTagIds));
-      tagsData?.forEach(tag => {
+      (tagsData as any[])?.forEach(tag => {
         tagsMap[tag.id] = tag as Tag;
       });
     }
@@ -148,8 +148,8 @@ class ClientsService extends BaseService<Client> {
       return { data: true, error: null, offline: true };
     }
 
-    const { error } = await supabase
-      .from('client_tags')
+    const { error } = await (supabase
+      .from('client_tags') as any)
       .insert({ client_id: clientId, tag_id: tagId });
 
     if (error && !error.message.includes('duplicate')) {
@@ -207,8 +207,8 @@ class ClientsService extends BaseService<Client> {
 
     // Add new tags
     if (tagIds.length > 0) {
-      const { error } = await supabase
-        .from('client_tags')
+      const { error } = await (supabase
+        .from('client_tags') as any)
         .insert(tagIds.map(tagId => ({ client_id: clientId, tag_id: tagId })));
 
       if (error) {
@@ -261,7 +261,7 @@ class ClientsService extends BaseService<Client> {
       .select('payment');
 
     if (error || !data) return 0;
-    return data.reduce((sum, c) => sum + (c.payment || 0), 0);
+    return (data as any[]).reduce((sum, c) => sum + (c.payment || 0), 0);
   }
 
   // Get monthly revenue (clients with monthly contracts)
@@ -280,7 +280,7 @@ class ClientsService extends BaseService<Client> {
       .eq('status', 'active');
 
     if (error || !data) return 0;
-    return data.reduce((sum, c) => sum + (c.payment || 0), 0);
+    return (data as any[]).reduce((sum, c) => sum + (c.payment || 0), 0);
   }
 }
 

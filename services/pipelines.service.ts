@@ -52,7 +52,7 @@ class PipelinesService extends BaseService<Pipeline> {
     }
 
     return {
-      data: { ...pipeline, stages: stages || [] } as PipelineWithStages,
+      data: { ...(pipeline as any), stages: stages || [] } as PipelineWithStages,
       error: null,
     };
   }
@@ -156,7 +156,7 @@ class PipelinesService extends BaseService<Pipeline> {
         .from('tags')
         .select('*')
         .in('id', Array.from(allTagIds));
-      tagsData?.forEach(tag => {
+      (tagsData as any[])?.forEach(tag => {
         tagsMap[tag.id] = tag as Tag;
       });
     }
@@ -218,7 +218,7 @@ class PipelinesService extends BaseService<Pipeline> {
     }
 
     const updates = pipelineIds.map((id, index) =>
-      supabase.from('pipelines').update({ display_order: index }).eq('id', id)
+      (supabase.from('pipelines') as any).update({ display_order: index }).eq('id', id)
     );
 
     await Promise.all(updates);
@@ -251,7 +251,7 @@ class PipelineStagesService extends BaseService<PipelineStage> {
     }
 
     const updates = stageIds.map((id, index) =>
-      supabase.from('pipeline_stages').update({ display_order: index }).eq('id', id)
+      (supabase.from('pipeline_stages') as any).update({ display_order: index }).eq('id', id)
     );
 
     await Promise.all(updates);
@@ -290,7 +290,7 @@ class CrmContactsService extends BaseService<CrmContact> {
       return { data: null, error: error.message };
     }
 
-    const tagIds = (data.contact_tags as { tag_id: string }[])?.map(ct => ct.tag_id) || [];
+    const tagIds = ((data as any).contact_tags as { tag_id: string }[])?.map(ct => ct.tag_id) || [];
     let tags: Tag[] = [];
 
     if (tagIds.length > 0) {
@@ -301,7 +301,7 @@ class CrmContactsService extends BaseService<CrmContact> {
       tags = (tagsData || []) as Tag[];
     }
 
-    const { contact_tags, ...contactData } = data;
+    const { contact_tags, ...contactData } = data as any;
     return { data: { ...contactData, tags } as CrmContactWithTags, error: null };
   }
 
@@ -343,7 +343,7 @@ class CrmContactsService extends BaseService<CrmContact> {
         .from('tags')
         .select('*')
         .in('id', Array.from(allTagIds));
-      tagsData?.forEach(tag => {
+      (tagsData as any[])?.forEach(tag => {
         tagsMap[tag.id] = tag as Tag;
       });
     }
@@ -423,7 +423,7 @@ class CrmContactsService extends BaseService<CrmContact> {
 
     const { data, error } = await query;
     if (error || !data) return 0;
-    return data.reduce((sum, c) => sum + (c.value || 0), 0);
+    return (data as any[]).reduce((sum, c) => sum + (c.value || 0), 0);
   }
 
   // Get weighted pipeline value
@@ -446,7 +446,7 @@ class CrmContactsService extends BaseService<CrmContact> {
 
     const { data, error } = await query;
     if (error || !data) return 0;
-    return data.reduce((sum, c) => sum + ((c.value || 0) * (c.probability || 50) / 100), 0);
+    return (data as any[]).reduce((sum, c) => sum + ((c.value || 0) * (c.probability || 50) / 100), 0);
   }
 
   // Add tag to contact
@@ -459,8 +459,8 @@ class CrmContactsService extends BaseService<CrmContact> {
       return { data: true, error: null, offline: true };
     }
 
-    const { error } = await supabase
-      .from('contact_tags')
+    const { error } = await (supabase
+      .from('contact_tags') as any)
       .insert({ contact_id: contactId, tag_id: tagId });
 
     if (error && !error.message.includes('duplicate')) {
