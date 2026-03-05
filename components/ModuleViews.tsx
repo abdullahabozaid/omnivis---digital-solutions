@@ -12571,13 +12571,14 @@ export const TasksView: React.FC = () => {
     const isSelected = selectedTaskIds.has(task.id);
     const isBlocked = isTaskBlocked(task.id);
     const blockingTasks = getBlockingTasks(task.id);
+    const [subtasksOpen, setSubtasksOpen] = useState(false);
 
     return (
       <div
         onClick={() => openTaskDetail(task)}
-        className={`p-4 rounded-xl border-l-4 cursor-pointer shadow-sm hover:shadow-md transition-all group ${getPriorityStyles(task.priority, task.completed)} ${isSelected ? 'ring-2 ring-gold-400' : ''}`}
+        className={`rounded-xl border-l-4 cursor-pointer shadow-sm hover:shadow-md transition-all group ${getPriorityStyles(task.priority, task.completed)} ${isSelected ? 'ring-2 ring-gold-400' : ''}`}
       >
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-3 p-4">
           {/* Selection checkbox */}
           <button
             onClick={(e) => { e.stopPropagation(); toggleTaskSelection(task.id); }}
@@ -12655,15 +12656,48 @@ export const TasksView: React.FC = () => {
               <div className="flex items-center gap-3 mt-2 text-xs text-gray-400 dark:text-dark-muted">
                 {task.links && task.links.length > 0 && <span className="flex items-center gap-1"><Link2 size={12} /> {task.links.length}</span>}
                 {task.subtasks && task.subtasks.length > 0 && (
-                  <span className="flex items-center gap-1">
-                    <CheckSquare size={12} /> {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}
-                  </span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setSubtasksOpen(o => !o); }}
+                    className="flex items-center gap-1 text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-gray-300 transition-colors font-medium"
+                  >
+                    <CheckSquare size={12} />
+                    {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length} subtasks
+                    {subtasksOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  </button>
                 )}
                 {task.notes && <span className="flex items-center gap-1"><FileText size={12} /></span>}
               </div>
             )}
           </div>
         </div>
+        {/* Subtasks accordion */}
+        {task.subtasks && task.subtasks.length > 0 && subtasksOpen && (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="border-t border-gray-100 dark:border-dark-border mx-4 mb-3 pt-3 space-y-1.5"
+          >
+            {task.subtasks.map(subtask => (
+              <div
+                key={subtask.id}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                onClick={() => {
+                  const updatedSubtasks = task.subtasks!.map(s => s.id === subtask.id ? { ...s, completed: !s.completed } : s);
+                  setTasks(prev => prev.map(t => t.id === task.id ? { ...t, subtasks: updatedSubtasks } : t));
+                  localStorage.setItem('tawfeeq_calendar_tasks', JSON.stringify(
+                    tasks.map(t => t.id === task.id ? { ...t, subtasks: updatedSubtasks } : t)
+                  ));
+                }}
+              >
+                <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${subtask.completed ? 'bg-green-500 border-green-500' : 'border-gray-300 dark:border-gray-600'}`}>
+                  {subtask.completed && <Check size={10} className="text-white" />}
+                </div>
+                <span className={`text-sm flex-1 ${subtask.completed ? 'line-through text-gray-400 dark:text-dark-muted' : 'text-gray-700 dark:text-dark-text'}`}>
+                  {subtask.title}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   };
